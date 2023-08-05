@@ -1,0 +1,17 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Users\\math_\\Documents\\Java\\Libraries\\Google\\gson-2.10.1.jar",
+        "c:\\Users\\math_\\Documents\\Java\\Libraries\\ApacheCommonsNumbaers\\commons-numbers-1.1-bin\\commons-numbers-1.1\\commons-numbers-fraction-1.1.jar",
+        "c:\\Users\\math_\\Documents\\Java\\Libraries\\ApacheCommonsNumbaers\\commons-numbers-1.1-bin\\commons-numbers-1.1\\commons-numbers-core-1.1.jar"
+    ],
+    "cSpell.words": [
+        "gson",
+        "layerwise",
+        "mjsd",
+        "neuralnetwork",
+        "relu",
+        "simpleneuralnetwork",
+        "SOFTMAX"
+    ]
+}
