@@ -23,17 +23,13 @@ public class MutableNeuralNetwork extends SimpleNeuralNetwork{
 		super(template);
 	}
 
-	public MutableNeuralNetwork(NetworkLayout layout, OutputHandler outputHandler, InputProvider inputProvider) throws NullPointerException {
-		super(layout, outputHandler, inputProvider);
-	}
-
-	protected MutableNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler outputHandler, InputProvider inputProvider) throws DimensionsMismatchException, NullPointerException {
-		super(layout, weights, biases, outputHandler, inputProvider);
+	protected MutableNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler[] outputHandlers, InputProvider[] inputProviders) throws DimensionsMismatchException, NullPointerException {
+		super(layout, weights, biases, outputHandlers, inputProviders);
 	}
 
 	@Override
 	public MutableNeuralNetwork copy() {
-		return new MutableNeuralNetwork(LAYOUT, NeuralNetworkTools.deepCopy(weights), NeuralNetworkTools.deepCopy(biases), this.getOutputHandler(), this.getInputProvider());
+		return new MutableNeuralNetwork(this);
 	}
 
 	@Override

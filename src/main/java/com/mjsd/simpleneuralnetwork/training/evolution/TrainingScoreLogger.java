@@ -17,7 +17,7 @@ public class TrainingScoreLogger implements Consumer<EvolutionaryTrainer<? exten
 	final private LinkedList<Double> BEST_SCORE_HISTORY = new LinkedList<Double>();
     final private List<Double> READ_ONLY_VIEW = Collections.unmodifiableList(BEST_SCORE_HISTORY);
 
-	private void updateScoreHistory(Optional<Double> bestScore){
+	private void updateScoreHistory(Optional<Double> bestScore) throws NullPointerException{
 
 		if(bestScore.isPresent()){
 			if(BEST_SCORE_HISTORY.isEmpty()){

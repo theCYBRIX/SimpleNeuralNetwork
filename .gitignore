@@ -1,1 +1,5 @@
-mjsd/util/
+#Ignore VS Code Project settings 
+.vscode/
+
+#Idnore test save file
+SinNetwork.json

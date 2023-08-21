@@ -3,24 +3,25 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Console;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import com.google.gson.Gson;
-
+import com.google.gson.JsonParseException;
 import com.mjsd.simpleneuralnetwork.ActivationFunctions;
 import com.mjsd.simpleneuralnetwork.NetworkLayout;
 import com.mjsd.simpleneuralnetwork.NetworkLayoutBuilder;
+import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
 import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
 import com.mjsd.simpleneuralnetwork.gson.CustomGsonFactory;
@@ -33,22 +34,16 @@ import com.mjsd.simpleneuralnetwork.training.evolution.SimpleEvolutionaryTrainer
 public class Test {
 
     final static Gson GSON = CustomGsonFactory.getInstance().newBuilder().setPrettyPrinting().create();
+    static boolean saveNetwork = false;
 
     public static void main(String[] args) {
-        String saveLocation = "SinNetwork.json";
-        File saveFile;
-        /*
-        AdjustableNeuralNetwork originalNetwork;
+        String savePath = "SinNetwork.json";
 
-        AdjustableNeuralNetworkBuilder networkBuilder = new AdjustableNeuralNetworkBuilder();
-        networkBuilder.withInputLayer(2, InputNormalizers.NO_NORMALIZER)
-                      .addHiddenLayer(3, ActivationFunctions.LINEAR)
-                      .withOutputLayer(1, ActivationFunctions.LINEAR)
-                      .withWeights(new double[][][]{{{ -0.84391201, 0.2454178}, {-0.47772055, -0.80820501}, {-0.94225327, 0.55239087}}, {{-0.28487789, 0.78176581, -0.2472606}}});;
-
-        originalNetwork = networkBuilder.build();
-        */
-
+        NetworkLayout layout = new NetworkLayoutBuilder()
+                               .withInputLayer(1)
+                               .withOutputLayer(1)
+                               .addLayers(2, 4, ActivationFunctions.TANH)
+                               .build();
         
         int numSamples = 128;
         float acceptableError = 0.02f;
@@ -63,47 +58,13 @@ public class Test {
             y[i] = Math.sin(x[i]);
         }
 
-        System.out.println(arrayToString(y));
+        println(arrayToString(y));
 
-        /*
-        saveFile = new File(saveLocation);
-        if(saveFile.isFile()){
-            try{
-                BufferedReader reader = new BufferedReader(new FileReader(saveFile));
-                StringBuffer buffer = new StringBuffer();
-                String fragment = reader.readLine();
-                while(fragment != null){
-                    buffer.append(fragment);
-                    fragment = reader.readLine();
-                }
-                reader.close();
-                AdjustableNeuralNetwork network = AdjustableNeuralNetworkBuilder.fromJson(buffer.toString());
+        try{
+            printNetworkPredictions(savePath, x, y);
+        } catch (Exception e){}
 
-                
-
-                StringBuilder results1 = new StringBuilder();
-                for(int i = 0; i < x.length; i++){
-                    network.setInput(0, x[i]);
-                    network.forwardPass();
-                    results1.append("sin(")
-                        .append(x[i])
-                        .append(") = ")
-                        .append(y[i])
-                        .append(" ~ ")
-                        .append(network.getOutput(0))
-                        .append("\n");
-                }
-                System.out.println(results1.toString());
-                
-            } catch (Exception e){
-                e.printStackTrace();
-            }
-
-            return;
-        }
-        */
-
-        com.mjsd.simpleneuralnetwork.training.evolution.TrainingScenario<RankedNeuralNetwork> learnSinFunction = new TrainingScenario<>() {
+        TrainingScenario<RankedNeuralNetwork> learnSinFunction = new TrainingScenario<>() {
 
             ArrayList<RankedNeuralNetwork> networks = new ArrayList<>();
             double[][] predictions;
@@ -121,13 +82,6 @@ public class Test {
                         predictions[networkIndex][input] = network.getOutput(0);
                     }
                 }
-                /*
-                try {
-                    Thread.sleep(1);
-                } catch (Exception e) {
-                    Thread.currentThread().interrupt();
-                }
-                */
             }
 
             @Override
@@ -146,8 +100,8 @@ public class Test {
                     }
 
                     if(!Double.isFinite(totalError)){
-                        System.out.println( "what??? " + totalError + "\n" + arrayToString(predictions[networkIndex]) + "\n" + network.toString() + "\n");
-                        System.out.println(network.toJson());
+                        println( "what??? " + totalError + "\n" + arrayToString(predictions[networkIndex]) + "\n" + network.toString() + "\n");
+                        println(network.toJson());
                         System.exit(1);
                     }
                     
@@ -157,18 +111,10 @@ public class Test {
             
         };
 
-        NetworkLayout layout = new NetworkLayoutBuilder()
-                               .withInputLayer(1)
-                               .withOutputLayer(1)
-                               .addLayers(10, 8, ActivationFunctions.ReLU)
-                               .build();
-
         SimpleEvolutionaryTrainer<RankedNeuralNetwork> trainer = new SimpleEvolutionaryTrainer<>(500, () -> new RankedNeuralNetwork(layout), (a, b) -> 0 - a.compareTo(b), learnSinFunction);
         trainer.getEcosystem().setParallel(true);
 
-        System.out.println(layout);
-        trainer.getEcosystem().populateNewGeneration();
-        System.out.println("Num networks = " + trainer.getEcosystem().getCurrentGeneration().size());
+        println(layout);
 
         Thread trainingThread = new Thread(trainer);
 
@@ -202,7 +148,7 @@ public class Test {
 
                 if(bestScore.isEmpty() || (bestScore.get().doubleValue() > leastError)){
                     bestScore = currentBestScore;
-                    System.out.println("\nTrainer status: " + (trainingThread.isAlive() ? (trainingThread.isInterrupted() ? "Interrupted" : "Active") : "Dead") + "\nNetwork Generation: " + trainer.getGeneration() + "\nNetwork Error: " + (bestScore.isPresent() ? decimalFormat.format(bestScore.get()) : "N/A"));
+                    println("\nTrainer status: " + (trainingThread.isAlive() ? (trainingThread.isInterrupted() ? "Interrupted" : "Active") : "Dead") + "\nNetwork Generation: " + trainer.getGeneration() + "\nNetwork Error: " + (bestScore.isPresent() ? decimalFormat.format(bestScore.get()) : "N/A"));
                 }
             }
         }, 50, 250, TimeUnit.MILLISECONDS);
@@ -218,11 +164,11 @@ public class Test {
                     }
 
                     switch (input.toLowerCase()) {
-                        case "exit", "close", "quit":
-                            mainThread.interrupt();
-                            return;
 
                         case "save":
+                            saveNetwork = true;
+
+                        case "exit", "close", "quit":
                             trainer.stop();
                             synchronized(waitObject){
                                 waitObject.notifyAll();
@@ -231,8 +177,8 @@ public class Test {
                             
                     
                         default:
-                            System.out.println("Trainer status: " + (trainingThread.isAlive() ? (trainingThread.isInterrupted() ? "Interrupted" : "Active") : "Dead"));
-                            System.out.println("Num networks = " + trainer.getEcosystem().getCurrentGeneration().size());
+                            println("Trainer status: " + (trainingThread.isAlive() ? (trainingThread.isInterrupted() ? "Interrupted" : "Active") : "Dead"));
+                            println("Num networks = " + trainer.getEcosystem().getCurrentGeneration().size());
                             break;
                     }
                 }
@@ -246,7 +192,7 @@ public class Test {
             }
         } catch (Exception exception) {
             if(!(exception instanceof InterruptedException)) exception.printStackTrace();
-            System.out.println("Closing application...");
+            println("Closing application...");
             trainer.stop();
             return;
         } finally {
@@ -254,11 +200,11 @@ public class Test {
         }
 
         Optional<Double> bestScore = trainer.getEcosystem().getBestScore();
-        System.out.println("\n\nNetwork reached desired proficiency.\nAverage error of " + decimalFormat.format(acceptableError) + ".\n");
-        System.out.println("\nNetwork Generation: " + trainer.getGeneration() + "\nNetwork Error: " + (bestScore.isPresent() ? decimalFormat.format(bestScore.get()) : "N/A"));
+        println("\n\nNetwork reached desired proficiency.\nAverage error of " + decimalFormat.format(acceptableError) + ".\n");
+        println("\nNetwork Generation: " + trainer.getGeneration() + "\nNetwork Error: " + (bestScore.isPresent() ? decimalFormat.format(bestScore.get()) : "N/A"));
 
         StringBuilder results = new StringBuilder();
-        SimpleNeuralNetwork bestNetwork = trainer.getEcosystem().getCurrentGeneration().get(0); //TODO: fix
+        SimpleNeuralNetwork bestNetwork = trainer.getEcosystem().getLeaderBoard((a, b) -> a.compareTo(b)).get(0);
         for(int i = 0; i < x.length; i++){
             bestNetwork.setInput(0, x[i]);
             bestNetwork.forwardPass();
@@ -273,18 +219,9 @@ public class Test {
             results.append(decimalFormat.format(bestNetwork.getOutput(0)));
             //results.append("\n");
         }
-        System.out.println(results.toString());
+        println(results.toString());
 
-        try{
-            saveFile = new File(saveLocation);
-            if(!saveFile.exists()) saveFile.createNewFile();
-            BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile));
-            writer.write(bestNetwork.toJson());
-            writer.flush();
-            writer.close();
-        } catch(Exception e){
-            e.printStackTrace();
-        }
+        if(saveNetwork) saveNetwork(bestNetwork, savePath, null);
 
         System.exit(0);
 
@@ -317,15 +254,82 @@ public class Test {
 
 
         serializedNetwork = MutableNeuralNetworkBuilder.fromJson(asJson);
-        System.out.println(serializedNetwork.getLayout() + "\n\n");
+        println(serializedNetwork.getLayout() + "\n\n");
 
-        System.out.println(asJson);
-        System.out.println("\n\nShould be false: " + originalNetwork.equals(serializedNetwork));
+        println(asJson);
+        println("\n\nShould be false: " + originalNetwork.equals(serializedNetwork));
 
         asJson = originalNetwork.toJson(GSON);
         serializedNetwork = MutableNeuralNetworkBuilder.fromJson(asJson);
 
-        System.out.println(asJson);
-        System.out.println("\n\nShould be true: " + originalNetwork.equals(serializedNetwork));
+        println(asJson);
+        println("\n\nShould be true: " + originalNetwork.equals(serializedNetwork));
+    }
+
+    static void println(String string){
+        System.out.println(string);
+    }
+
+    static void println(Object obj){
+        println(obj.toString());
+    }
+
+    static <T extends SimpleNeuralNetwork> T networkFromFile(String filePath, Class<T> networkType) throws FileNotFoundException, IOException, JsonParseException {
+        File saveFile = new File(filePath);
+
+        if(!saveFile.isFile()) throw new FileNotFoundException("File does not exist: " + saveFile.getAbsolutePath());
+
+        BufferedReader reader = new BufferedReader(new FileReader(saveFile));
+        StringBuffer buffer = new StringBuffer();
+        String fragment = reader.readLine();
+        while(fragment != null){
+            buffer.append(fragment);
+            fragment = reader.readLine();
+        }
+        reader.close();
+        return NeuralNetworkBuilder.fromJson(buffer.toString(), networkType);
+    }
+
+    static void printNetworkPredictions(String networkPath, double[] x, double[] y) throws FileNotFoundException, IOException, JsonParseException{
+        printNetworkPredictions(networkFromFile(networkPath, SimpleNeuralNetwork.class), x, y);
+    }
+
+    static void printNetworkPredictions(SimpleNeuralNetwork network, double[] x, double[] y){
+        try{
+            StringBuilder results1 = new StringBuilder();
+            for(int i = 0; i < x.length; i++){
+                network.setInput(0, x[i]);
+                network.forwardPass();
+                results1.append("sin(")
+                    .append(x[i])
+                    .append(") = ")
+                    .append(y[i])
+                    .append(" ~ ")
+                    .append(network.getOutput(0))
+                    .append("\n");
+            }
+            println(results1.toString());
+            
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    static void saveNetwork(SimpleNeuralNetwork network, String path) throws IOException{
+        saveNetwork(network, path, null);
+    }
+
+    static void saveNetwork(SimpleNeuralNetwork network, String path, Consumer<Exception> onException) {
+        onException = (onException == null) ? x -> x.printStackTrace() : onException;
+        try {
+            File saveFile = new File(path);
+            if(!saveFile.exists()) saveFile.createNewFile();
+            BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile));
+            writer.write(network.toJson());
+            writer.flush();
+            writer.close();
+        } catch (Exception e) {
+            onException.accept(e);
+        }
     }
 }

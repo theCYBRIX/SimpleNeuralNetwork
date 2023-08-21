@@ -1,5 +1,6 @@
 package com.mjsd.simpleneuralnetwork.training.evolution;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
@@ -10,6 +11,7 @@ public class RandomMutation<E extends MutableNeuralNetwork> extends SingleParent
 
     public RandomMutation(double maxWeightDeviation, double maxBiasDeviation, Supplier<E> networkSupplier) throws NullPointerException{
         super(x -> NeuralNetworkTools.randomMutation(NeuralNetworkTools.copy(x, networkSupplier), maxWeightDeviation, maxBiasDeviation));
+        Objects.requireNonNull(networkSupplier, "Supplier is null.");
     }
 
 }

@@ -1,5 +1,6 @@
 package com.mjsd.simpleneuralnetwork.training.evolution;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
@@ -10,6 +11,7 @@ public class SinglePointCrossover<E extends MutableNeuralNetwork> extends TwoPar
 
     public SinglePointCrossover(Supplier<E> networkSupplier) throws NullPointerException {
         super((x, y) -> NeuralNetworkTools.singlePointCrossover(x, y, networkSupplier));
+        Objects.requireNonNull(networkSupplier, "Supplier is null.");
     }
     
 }

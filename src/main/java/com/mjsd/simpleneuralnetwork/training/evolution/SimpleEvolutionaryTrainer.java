@@ -1,5 +1,6 @@
 package com.mjsd.simpleneuralnetwork.training.evolution;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -29,17 +30,43 @@ public class SimpleEvolutionaryTrainer<E extends RankedNeuralNetwork> extends Ev
         super(getEcosystem(networksPerGeneration, networkSupplier, (x, y) -> x.compareTo(y)), trainingScenario);
     }
 
+    public SimpleEvolutionaryTrainer(int networksPerGeneration, int numPopulations, Supplier<E> networkSupplier,
+            TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
+        super(getEcosystem(networksPerGeneration, numPopulations, networkSupplier, (x, y) -> x.compareTo(y)), trainingScenario);
+    }
+
     public SimpleEvolutionaryTrainer(int networksPerGeneration, Supplier<E> networkSupplier, Comparator<E> comparator,
             TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
         super(getEcosystem(networksPerGeneration, networkSupplier, Objects.requireNonNull(comparator, "Comparator is null.")), trainingScenario);
+    }
+
+    public SimpleEvolutionaryTrainer(int networksPerGeneration, int numPopulations, Supplier<E> networkSupplier, Comparator<E> comparator,
+            TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
+        super(getEcosystem(networksPerGeneration, numPopulations, networkSupplier, Objects.requireNonNull(comparator, "Comparator is null.")), trainingScenario);
     }
 
     private static <E extends RankedNeuralNetwork> Ecosystem<E> getEcosystem(int totalNumNetworks, Supplier<E> networkSupplier, Comparator<E> comparator) throws IllegalArgumentException, NullPointerException {
         return new Ecosystem<>(totalNumNetworks, newPopulation(networkSupplier, comparator));
     }
 
+    private static <E extends RankedNeuralNetwork> Ecosystem<E> getEcosystem(int totalNumNetworks, int numPopulations, Supplier<E> networkSupplier, Comparator<E> comparator) throws IllegalArgumentException, NullPointerException {
+        if(numPopulations < 1) throw new  IllegalArgumentException("Illegal number of populations: " + numPopulations);
+        return new Ecosystem<>(totalNumNetworks, newPopulations(numPopulations, networkSupplier, comparator));
+    }
+
     private static <E extends RankedNeuralNetwork> Population<E> newPopulation(Supplier<E> networkSupplier, Comparator<E> comparator){
         return new Population<>(DEF_PARENT_FRACTION, networkSupplier, getOffspringProviders(networkSupplier), getDistribution(), comparator);
+    }
+
+    private static <E extends RankedNeuralNetwork> Collection<Population<E>> newPopulations(int numPopulations, Supplier<E> networkSupplier, Comparator<E> comparator){
+        ArrayList<Population<E>>  populations = new ArrayList<>(numPopulations);
+        CompoundRatio distribution = getDistribution();
+        Collection<OffspringProvider<E>> offspringProviders = getOffspringProviders(networkSupplier);
+
+        for (int i = 0; i < numPopulations; i++)
+            populations.add(new Population<>(DEF_PARENT_FRACTION, networkSupplier, offspringProviders, distribution, comparator));
+
+        return populations;
     }
 
     private static <E extends RankedNeuralNetwork> Collection<OffspringProvider<E>> getOffspringProviders(Supplier<E> networkSupplier){

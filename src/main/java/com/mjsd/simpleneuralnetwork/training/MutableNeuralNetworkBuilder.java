@@ -1,5 +1,6 @@
 package com.mjsd.simpleneuralnetwork.training;
 
+import java.util.Collection;
 import java.util.function.Function;
 
 import com.google.gson.JsonSyntaxException;
@@ -24,7 +25,7 @@ public class MutableNeuralNetworkBuilder extends NeuralNetworkBuilder<MutableNeu
         super(NETWORK_SUPPLIER, initialState);
     }
 
-    public MutableNeuralNetworkBuilder(NetworkLayout initialState, InputProvider inputProvider, OutputHandler outputHandler) throws NullPointerException{
+    public MutableNeuralNetworkBuilder(NetworkLayout initialState, Collection<InputProvider> inputProvider, Collection<OutputHandler> outputHandler) throws NullPointerException{
         super(NETWORK_SUPPLIER, initialState, inputProvider, outputHandler);
     }
     
