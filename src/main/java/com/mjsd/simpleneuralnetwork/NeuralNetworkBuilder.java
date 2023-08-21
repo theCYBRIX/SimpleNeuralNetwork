@@ -1,6 +1,9 @@
 package com.mjsd.simpleneuralnetwork;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -17,24 +20,24 @@ import com.mjsd.simpleneuralnetwork.gson.CustomGsonFactory;
 public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
     final private Function<NetworkLayout, E> NETWORK_SUPPLIER;
     private NetworkLayoutBuilder layoutBuilder;
-    private InputProvider inputProvider;
-    private OutputHandler outputHandler;
+    private List<InputProvider> inputProviders;
+    private List<OutputHandler> outputHandlers;
     private double[][][] weights = null;
     private double[][] biases = null;
 
     public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier) throws NullPointerException{
         NETWORK_SUPPLIER = Objects.requireNonNull(supplier);
         layoutBuilder = new NetworkLayoutBuilder();
-        inputProvider = InputProvider.NO_PROVIDER;
-        outputHandler = OutputHandler.NO_HANDLER;
+        inputProviders = null;
+        outputHandlers = null;
     }
 
     public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, E initialState) throws NullPointerException{
         NETWORK_SUPPLIER = Objects.requireNonNull(supplier);
         Objects.requireNonNull(initialState);
         this.layoutBuilder = new NetworkLayoutBuilder(initialState.getLayout());
-        inputProvider = initialState.getInputProvider();
-        outputHandler = initialState.getOutputHandler();
+        inputProviders = initialState.getInputProviders();
+        outputHandlers = initialState.getOutputHandlers();
 
         double[][][] initialWeights = initialState.getWeights();
         double[][] initialBiases = initialState.getBiases();
@@ -46,11 +49,11 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
         this(supplier, initialState, null, null);
     }
 
-    public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, NetworkLayout initialState, InputProvider inputProvider, OutputHandler outputHandler) throws NullPointerException{
+    public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, NetworkLayout initialState, Collection<InputProvider> inputProvider, Collection<OutputHandler> outputHandler) throws NullPointerException{
         NETWORK_SUPPLIER = Objects.requireNonNull(supplier);
         this.layoutBuilder = new NetworkLayoutBuilder(initialState);
-        this.inputProvider = InputProvider.ensureProvider(inputProvider);
-        this.outputHandler = OutputHandler.ensureHandler(outputHandler);
+        setInputProviders(inputProvider);
+        setOutputHandlers(outputHandler);
     }
 
 
@@ -61,19 +64,19 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
      * @see #withInputLayer()
      * @see #withOutputLayer()
      */
-    public E build() throws IllegalStateException, DimensionsMismatchException {
+    public E build() throws IllegalStateException, IllegalArgumentException, DimensionsMismatchException {
         E instance = NETWORK_SUPPLIER.apply(layoutBuilder.build());
         if(biases != null) instance.biases = NeuralNetworkTools.deepCopy(NeuralNetworkTools.ensureValidBiasArray(instance.LAYOUT, biases));
         if(weights != null) instance.weights = NeuralNetworkTools.deepCopy(NeuralNetworkTools.ensureValidWeightArray(instance.LAYOUT, weights));
-        instance.setInputProvider(inputProvider);
-        instance.setOutputHandler(outputHandler);
+        if(inputProviders != null) instance.setInputProviders(inputProviders);
+        if(outputHandlers != null) instance.setOutputHandlers(outputHandlers);
         return instance;
     }
 
     public void reset(){
         layoutBuilder.reset();
-        inputProvider = InputProvider.NO_PROVIDER;
-        outputHandler = OutputHandler.NO_HANDLER;
+        inputProviders = null;
+        outputHandlers = null;
         weights = null;
         biases = null;
     }
@@ -173,13 +176,12 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
         return this;
     }
     
-
-    public void setInputProvider(InputProvider inputProvider) {
-        this.inputProvider = (inputProvider == null) ? InputProvider.NO_PROVIDER : inputProvider;
+    public void setInputProviders(Collection<InputProvider> inputProviders) {
+        this.inputProviders = (inputProviders == null) ? null : new ArrayList<>(inputProviders);
     }
 
-    public void setOutputHandler(OutputHandler outputHandler) {
-        this.outputHandler = (outputHandler == null) ? OutputHandler.NO_HANDLER : outputHandler;
+    public void setOutputHandlers(Collection<OutputHandler> outputHandlers) {
+        this.outputHandlers = (outputHandlers == null) ? null : new ArrayList<>(Arrays.asList(outputHandlers.stream().map(x -> OutputHandler.ensureHandler(x)).toArray(OutputHandler[]::new)));
     }
 
     public NetworkLayout getLayout() throws IllegalStateException {

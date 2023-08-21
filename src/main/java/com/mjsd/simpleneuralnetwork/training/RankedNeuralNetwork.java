@@ -2,11 +2,13 @@ package com.mjsd.simpleneuralnetwork.training;
 
 import java.util.Optional;
 
+import com.google.gson.annotations.JsonAdapter;
 import com.mjsd.simpleneuralnetwork.NetworkLayout;
 import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
-import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
+import com.mjsd.simpleneuralnetwork.gson.RankedNeuralNetworkAdapter;
 
+@JsonAdapter(RankedNeuralNetworkAdapter.class)
 public class RankedNeuralNetwork extends MutableNeuralNetwork implements Comparable<RankedNeuralNetwork> {
 
 	private Optional<Double> score = Optional.empty();
@@ -19,12 +21,8 @@ public class RankedNeuralNetwork extends MutableNeuralNetwork implements Compara
 		super(template);
 	}
 
-	public RankedNeuralNetwork(NetworkLayout layout, OutputHandler outputHandler, InputProvider inputProvider) throws NullPointerException {
-		super(layout, outputHandler, inputProvider);
-	}
-
-	protected RankedNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler outputHandler, InputProvider inputProvider) throws NullPointerException {
-		super(layout, weights, biases, outputHandler, inputProvider);
+	protected RankedNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler[] outputHandlers, InputProvider[] inputProviders) throws NullPointerException {
+		super(layout, weights, biases, outputHandlers, inputProviders);
 	}
 
 	public Optional<Double> getScore() {
@@ -46,7 +44,7 @@ public class RankedNeuralNetwork extends MutableNeuralNetwork implements Compara
 
 	@Override
 	public RankedNeuralNetwork copy() {
-		return new RankedNeuralNetwork(LAYOUT, NeuralNetworkTools.deepCopy(weights), NeuralNetworkTools.deepCopy(biases), this.getOutputHandler(), this.getInputProvider());
+		return new RankedNeuralNetwork(this);
 	}
 
 	@Override

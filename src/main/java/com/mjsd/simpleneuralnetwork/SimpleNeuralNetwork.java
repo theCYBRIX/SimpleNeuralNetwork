@@ -9,8 +9,15 @@ import com.mjsd.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.mjsd.simpleneuralnetwork.gson.*;
 import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @JsonAdapter(SimpleNeuralNetworkAdapter.class)
 public class SimpleNeuralNetwork {
@@ -33,29 +40,34 @@ public class SimpleNeuralNetwork {
 	protected ActivationFunction outputActivation;
 	protected InputNormalizer outputNormalizer;
 
-	private OutputHandler outputHandler;
-	private InputProvider inputProvider;
+	private OutputHandler[] outputHandlers;
+	private InputProvider[] inputProviders;
 
-	protected SimpleNeuralNetwork(NetworkLayout layout) throws NullPointerException{
-		this(layout, null, null);
-	}
+	final private Object SYNCH_OBJECT = new Object();
+	private boolean parallel = false;
+	private Runnable inputProtocol = this::getInputsLinear,
+					 outputProtocol = this::handleOutputsLinear;
 
 	protected SimpleNeuralNetwork(SimpleNeuralNetwork template) throws NullPointerException{
-		this(Objects.requireNonNull(template).LAYOUT, template.outputHandler, template.inputProvider);
-		this.weights = NeuralNetworkTools.deepCopy(template.weights);
-		this.biases = NeuralNetworkTools.deepCopy(template.biases);
+		this(template.LAYOUT, NeuralNetworkTools.deepCopy(template.weights), NeuralNetworkTools.deepCopy(template.biases), Arrays.copyOf(template.outputHandlers, template.outputHandlers.length), Arrays.copyOf(template.inputProviders, template.inputProviders.length));
 	}
 
 	
-	protected SimpleNeuralNetwork(NetworkLayout layout, OutputHandler outputHandler, InputProvider inputProvider) throws NullPointerException {
+	protected SimpleNeuralNetwork(NetworkLayout layout) throws NullPointerException {
 		LAYOUT = Objects.requireNonNull(layout);
 
 		NetworkLayer inputLayerLayout = layout.getInputLayer(),
 					 outputLayerLayout = layout.getOutputLayer();
 		List<NetworkLayer> hiddenLayerLayouts = layout.getHiddenLayers();
 
-		this.outputHandler = OutputHandler.ensureHandler(outputHandler);
-		this.inputProvider = InputProvider.ensureProvider(inputProvider);
+		this.outputHandlers = new OutputHandler[outputLayerLayout.getNodeCount()];
+		for (int i = 0; i < outputHandlers.length; i++)
+			outputHandlers[i] = OutputHandler.NO_HANDLER;
+			
+		this.inputProviders = new InputProvider[inputLayerLayout.getNodeCount()];
+		for (int i = 0; i < inputProviders.length; i++)
+			inputProviders[i] = InputProvider.NO_PROVIDER;
+
 
 		this.hiddenLayers = new double[hiddenLayerLayouts.size()][];
 		this.hiddenActivations = new ActivationFunction[hiddenLayerLayouts.size()];
@@ -97,17 +109,20 @@ public class SimpleNeuralNetwork {
 	}
 
 	
-	protected SimpleNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler outputHandler, InputProvider inputProvider) throws NullPointerException {
-		LAYOUT = Objects.requireNonNull(layout);
-		this.weights = Objects.requireNonNull(weights);
-		this.biases = Objects.requireNonNull(biases);
+	/**
+	 * @implNote This constructor does not check the given values, and should only be used if the inputs are guaranteed to be valid.
+	 */
+	protected SimpleNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler[] outputHandlers, InputProvider[] inputProviders) throws NullPointerException {
+		LAYOUT = layout;
+		this.weights = weights;
+		this.biases = biases;
 
 		NetworkLayer inputLayerLayout = layout.getInputLayer(),
 					 outputLayerLayout = layout.getOutputLayer();
 		List<NetworkLayer> hiddenLayerLayouts = layout.getHiddenLayers();
 
-		this.outputHandler = OutputHandler.ensureHandler(outputHandler);
-		this.inputProvider = InputProvider.ensureProvider(inputProvider);
+		this.outputHandlers = outputHandlers;
+		this.inputProviders = inputProviders;
 
 		this.hiddenLayers = new double[hiddenLayerLayouts.size()][];
 		this.hiddenActivations = new ActivationFunction[hiddenLayerLayouts.size()];
@@ -131,22 +146,34 @@ public class SimpleNeuralNetwork {
 	}
 
 	public void forwardPass(){
-		inputProvider.getInputs(inputs);
+		synchronized(SYNCH_OBJECT){
+			inputProtocol.run();
 
-		applyLayerModifiers(inputs, inputNormalizer, inputActivation);
+			applyLayerModifiers(inputs, inputNormalizer, inputActivation);
 
-		double[] previousLayer = inputs;
+			double[] previousLayer = inputs;
 
-		for(int layer = 0; layer < hiddenLayers.length; layer++){
-			hiddenLayers[layer] = vectorSum(dotSequence(previousLayer, weights[layer]), biases[layer]);
-			applyLayerModifiers(hiddenLayers[layer], hiddenNormalizers[layer], hiddenActivations[layer]);
-			previousLayer = hiddenLayers[layer];
+			for(int layer = 0; layer < hiddenLayers.length; layer++){
+				hiddenLayers[layer] = vectorSum(dotSequence(previousLayer, weights[layer]), biases[layer]);
+				applyLayerModifiers(hiddenLayers[layer], hiddenNormalizers[layer], hiddenActivations[layer]);
+				previousLayer = hiddenLayers[layer];
+			}
+
+			outputs = vectorSum(dotSequence(previousLayer, weights[OUTPUT_LAYER]), biases[OUTPUT_LAYER]);
+			applyLayerModifiers(outputs, outputNormalizer, outputActivation);
+		
+			outputProtocol.run();
 		}
+	}
 
-		outputs = vectorSum(dotSequence(previousLayer, weights[OUTPUT_LAYER]), biases[OUTPUT_LAYER]);
-		applyLayerModifiers(outputs, outputNormalizer, outputActivation);
-	
-		outputHandler.handle(outputs);
+	private void getInputsLinear(){
+		for (int i = 0; i < inputs.length; i++)
+			inputs[i] = inputProviders[i].orElse(inputs[i]);
+	}
+
+	private void handleOutputsLinear(){
+		for (int i = 0; i < outputHandlers.length; i++)
+			outputHandlers[i].handle(outputs[i]);
 	}
 
 	private static double dotProduct(double[] v1, double[] v2) {
@@ -177,7 +204,7 @@ public class SimpleNeuralNetwork {
     }
 	
 	public SimpleNeuralNetwork copy() {
-		return new SimpleNeuralNetwork(LAYOUT, NeuralNetworkTools.deepCopy(weights), NeuralNetworkTools.deepCopy(biases), outputHandler, inputProvider);
+		return new SimpleNeuralNetwork(this);
 	}
 
 	/**
@@ -257,8 +284,8 @@ public class SimpleNeuralNetwork {
 		return inputs;
 	}
 
-	public InputProvider getInputProvider() {
-		return inputProvider;
+	public List<InputProvider> getInputProviders() {
+		return new ArrayList<>(Arrays.asList(inputProviders));
 	}
 
 	public double getOutput(int index) throws IndexOutOfBoundsException {
@@ -269,8 +296,8 @@ public class SimpleNeuralNetwork {
 		return outputs;
 	}
 
-	public OutputHandler getOutputHandler() {
-		return outputHandler;
+	public List<OutputHandler> getOutputHandlers() {
+		return new ArrayList<>(Arrays.asList(outputHandlers));
 	}
 
 	public NetworkLayout getLayout(){
@@ -282,7 +309,9 @@ public class SimpleNeuralNetwork {
 	}
 
 	public double getValue(int hiddenLayerIndex, int nodeIndex) throws ArrayIndexOutOfBoundsException {
-		return hiddenLayers[hiddenLayerIndex][nodeIndex];
+		synchronized(SYNCH_OBJECT){
+			return hiddenLayers[hiddenLayerIndex][nodeIndex];
+		}
 	}
 
     public String toJson(){
@@ -290,7 +319,7 @@ public class SimpleNeuralNetwork {
     }
 
     public String toJson(Gson gson){
-        return gson.toJson(this, SimpleNeuralNetwork.class);
+        return gson.toJson(this);
     }
 
 	/**
@@ -318,25 +347,47 @@ public class SimpleNeuralNetwork {
 			throw new DimensionsMismatchException("Number of values (" + values.length + ") does not match number of input nodes ("
 					+ this.inputs.length + ").");
 
-		synchronized(this.inputs){
+		synchronized(SYNCH_OBJECT){
 			for (int i = 0; i < this.inputs.length; i++)
 				this.inputs[i] = values[i];
 		}
 	}
 
-	public void setInput(int index, double value) {
-		inputs[index] = value;
-	}
-
-	public void setOutputHandler(OutputHandler outputHandler) {
-		synchronized (this.outputHandler) {
-			this.outputHandler = OutputHandler.ensureHandler(outputHandler);
+	public void setInput(int index, double value) throws ArrayIndexOutOfBoundsException {
+		synchronized(SYNCH_OBJECT){
+			inputs[index] = value;
 		}
 	}
 
-	public void setInputProvider(InputProvider inputProvider) {
-		synchronized (this.inputProvider) {
-			this.inputProvider = InputProvider.ensureProvider(inputProvider);
+	public void setOutputHandler(int index, OutputHandler outputHandler) throws IndexOutOfBoundsException {
+		if(index < 0 || index > outputHandlers.length) throw new IndexOutOfBoundsException(index);
+		synchronized (SYNCH_OBJECT) {
+			this.outputHandlers[index] = OutputHandler.ensureHandler(outputHandler);
+		}
+	}
+
+	public void setInputProvider(int index, InputProvider inputProvider) throws IndexOutOfBoundsException {
+		if(index < 0 || index > inputProviders.length) throw new IndexOutOfBoundsException(index);
+		synchronized (SYNCH_OBJECT) {
+			this.inputProviders[index] = InputProvider.ensureProvider(inputProvider);
+		}
+	}
+
+	public void setOutputHandlers(List<OutputHandler> outputHandlers) throws IllegalArgumentException {
+		if(Objects.requireNonNull(outputHandlers, "List is null.").size() != outputs.length)
+			throw new IllegalArgumentException("Number of objects in list doesn't match number of output nodes. (" + outputHandlers.size() + " != " + outputs.length + ")");
+		synchronized (SYNCH_OBJECT) {
+			for (int i = 0; i < outputs.length; i++)
+				this.outputHandlers[i] = OutputHandler.ensureHandler(outputHandlers.get(i));
+		}
+	}
+
+	public void setInputProviders(List<InputProvider> inputProviders) throws IllegalArgumentException {
+		if(Objects.requireNonNull(inputProviders, "List is null.").size() != inputs.length)
+			throw new IllegalArgumentException("Number of objects in list doesn't match number of input nodes. (" + inputProviders.size() + " != " + inputs.length + ")");
+		synchronized (SYNCH_OBJECT) {
+			for (int i = 0; i < inputs.length; i++)
+				this.inputProviders[i] = InputProvider.ensureProvider(inputProviders.get(i));
 		}
 	}
 
@@ -347,7 +398,9 @@ public class SimpleNeuralNetwork {
 	 * @see {@link MutableNeuralNetwork#retrieveWeightsArray() }
 	 */
 	final public double[][][] getWeights()  {
-		return NeuralNetworkTools.deepCopy(weights);
+		synchronized(SYNCH_OBJECT){
+			return NeuralNetworkTools.deepCopy(weights);
+		}
 	}
 	
 	/**
@@ -355,10 +408,24 @@ public class SimpleNeuralNetwork {
 	 * @see {@link MutableNeuralNetwork#retrieveBiasesArray() }
 	 */
 	final public double[][] getBiases(){
-		return NeuralNetworkTools.deepCopy(biases);
+		synchronized(SYNCH_OBJECT){
+			return NeuralNetworkTools.deepCopy(biases);
+		}
 	}
 
 
+	public void setParallel(boolean enabled) {
+		if(parallel == enabled) return;
+		parallel = enabled;
+		if(parallel){
+			ParallelOperationAdapter adapter = new ParallelOperationAdapter();
+			inputProtocol = adapter::getInputs;
+			outputProtocol = adapter::handleOutputs;
+		} else {
+			inputProtocol = this::getInputsLinear;
+			outputProtocol = this::handleOutputsLinear;
+		}
+	}
 
 
 
@@ -379,10 +446,7 @@ public class SimpleNeuralNetwork {
 		public double apply(double[] layer, int index);
 
         public static ActivationFunction ensureFunction(ActivationFunction function){
-            if(function == null)
-                return ActivationFunctions.LINEAR;
-            else
-                return function;
+            return (function == null) ? ActivationFunctions.LINEAR : function;
         }
 	}
 
@@ -392,50 +456,80 @@ public class SimpleNeuralNetwork {
 		public void normalize(double[] values);
 
         public static InputNormalizer ensureNormalizer(InputNormalizer normalizer){
-            if(normalizer == null)
-                return InputNormalizers.NO_NORMALIZER;
-            else
-                return normalizer;
+            return (normalizer == null) ? InputNormalizers.NO_NORMALIZER : normalizer;
         }
 	}
 
-	@JsonAdapter(OutputHandlerAdapter.class)
 	@FunctionalInterface
 	public interface OutputHandler {
-		public static String NO_HANDLER_STRING = "NO_HANDLER";
+		final static OutputHandler NO_HANDLER = x -> {};
 
-		public void handle(double[] outputs);
+		public void handle(double output);
 
 		public static OutputHandler ensureHandler(OutputHandler handler){
-			if(handler == null)
-				return OutputHandler.NO_HANDLER;
-			else
-				return handler;
+			return (handler == null) ? OutputHandler.NO_HANDLER : handler;
 		}
 
-		final public static OutputHandler NO_HANDLER = new OutputHandler() {
-			@Override public void handle(double[] values){}
-			@Override public String toString(){ return NO_HANDLER_STRING; }
-		};
+		public static OutputHandler none(){
+			return OutputHandler.NO_HANDLER;
+		}
 	}
 
-	@JsonAdapter(InputProviderAdapter.class)
 	@FunctionalInterface
 	public interface InputProvider {
-		public static String NO_PROVIDER_STRING = "NO_PROVIDER";
+		final static InputProvider NO_PROVIDER = x -> x;
 
-		public void getInputs(double[] inputs);
+		public double orElse(double value);
 
-		public static InputProvider ensureProvider(InputProvider provider){
-			if(provider == null)
-				return InputProvider.NO_PROVIDER;
-			else
-				return provider;
+		private static InputProvider ensureProvider(InputProvider provider){
+			return (provider == null) ? InputProvider.none() : provider;
 		}
 
-		final public static InputProvider NO_PROVIDER = new InputProvider() {
-			@Override public void getInputs(double[] inputs){}
-			@Override public String toString(){ return NO_PROVIDER_STRING; }
-		};
+		private static InputProvider none(){
+			return NO_PROVIDER;
+		}
 	}
+
+	private class ParallelOperationAdapter{
+		private ExecutorService executorService = Executors.newCachedThreadPool();
+
+		@SuppressWarnings("unchecked")
+		private Future<Double>[] inputOperations = new Future[inputProviders.length];
+		private Future<?>[] outputOperations = new Future[outputHandlers.length];
+
+		public void getInputs(){
+			int i;
+			for (i = 0; i < inputProviders.length; i++) {
+				final InputProvider INPUT_PROVIDER = inputProviders[i];
+				final double CURRENT_VALUE = inputs[i];
+				inputOperations[i] = executorService.submit(() -> INPUT_PROVIDER.orElse(CURRENT_VALUE));	
+			}
+
+			for(i = 0; i < inputProviders.length; i++)
+				try {
+					inputs[i] = inputOperations[i].get();
+				} catch (CancellationException | ExecutionException e) {
+					continue;
+				} catch (InterruptedException e) {
+					break;
+				}
+		}
+
+		public void handleOutputs(){
+			for (int i = 0; i < outputHandlers.length; i++) {
+				OutputHandler handler = outputHandlers[i];
+				double output = outputs[i];
+				outputOperations[i] = executorService.submit(() -> handler.handle(output));	
+			}
+			for (int i = 0; i < outputHandlers.length; i++) 
+				try {
+					outputOperations[i].get();
+				} catch (CancellationException | ExecutionException e) {
+					continue;
+				} catch (InterruptedException e) {
+					break;
+				}
+		}
+	}
+	
 }
