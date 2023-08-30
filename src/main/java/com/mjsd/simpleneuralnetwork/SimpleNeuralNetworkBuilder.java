@@ -1,6 +1,6 @@
 package com.mjsd.simpleneuralnetwork;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 
 import com.google.gson.JsonSyntaxException;
@@ -23,7 +23,7 @@ public class SimpleNeuralNetworkBuilder extends NeuralNetworkBuilder<SimpleNeura
         super(NETWORK_SUPPLIER, initialState);
     }
 
-    public SimpleNeuralNetworkBuilder(NetworkLayout initialState, Collection<InputProvider> inputProvider, Collection<OutputHandler> outputHandler) throws NullPointerException{
+    public SimpleNeuralNetworkBuilder(NetworkLayout initialState, List<InputProvider> inputProvider, List<OutputHandler> outputHandler) throws NullPointerException{
         super(NETWORK_SUPPLIER, initialState, inputProvider, outputHandler);
     }
     

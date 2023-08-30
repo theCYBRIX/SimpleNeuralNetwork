@@ -73,7 +73,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
     }
 
     public Optional<Double> getBestScore(){
-        return POPULATIONS.stream()
+        return populationStream.get()
                .map(x -> x.getBestScore())
                .filter(x -> x.isPresent())
                .map(x -> x.get())

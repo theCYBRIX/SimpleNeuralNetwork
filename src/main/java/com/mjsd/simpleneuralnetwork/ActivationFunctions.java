@@ -1,7 +1,6 @@
 package com.mjsd.simpleneuralnetwork;
 
 import java.util.Arrays;
-import java.util.HashMap;
 
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.ActivationFunction;
 
@@ -70,31 +69,35 @@ public enum ActivationFunctions implements ActivationFunction{
      */
     final public static class Softmax implements ActivationFunction {
         final public static String FUNCTION_NAME = "SOFTMAX";
-        private HashMap<Double, Double> valueMap;
-        private double[] preppedLayer = null;
+        private double[] source = null,
+                         cache = new double[0];
 
         @Override
-        public double apply(double[] layer, int index) {
-            if(preppedLayer != layer) updateValues(layer);
-            return valueMap.get(layer[index]); 
+        public synchronized double apply(double[] layer, int index) throws ArrayIndexOutOfBoundsException {
+            if(source != layer){
+                cache = applyAll(layer);
+                source = layer;
+            }
+            return cache[index];
         }
 
-        public void updateValues(double[] layer){
-            valueMap = new HashMap<>(layer.length);
-
-            double[] modifiedLayer = new double[layer.length];
+        @Override
+        public double[] applyAll(double[] layer){
+            double[] destination = new double[layer.length];
             
-            double largestInput = Arrays.stream(layer).max().getAsDouble();
+            applyAll(layer, destination);
+            
+            return destination;
+        }
 
-            for (int i = 0; i < layer.length; i++)
-                modifiedLayer[i] = Math.exp(layer[i] - largestInput);
+        @Override
+        public void applyAll(double[] source, double[] destination){
+            double largestInput = Arrays.stream(source).max().getAsDouble();
 
-            Normalization.Z_Score(modifiedLayer);
+            for (int i = 0; i < source.length; i++)
+                destination[i] = Math.exp(source[i] - largestInput);
 
-            for(int i = 0; i < layer.length; i++)
-                valueMap.put(layer[i], modifiedLayer[i]);
-
-            preppedLayer = layer;
+            Normalization.Z_Score(destination);
         }
 
         @Override

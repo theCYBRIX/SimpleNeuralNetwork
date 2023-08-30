@@ -34,7 +34,7 @@ public class NetworkLayoutBuilder {
     }
 
     public NetworkLayoutBuilder(NetworkLayout initialState) throws NullPointerException {
-        this.set(initialState);
+        this.setState(initialState);
     }
 
 
@@ -46,7 +46,7 @@ public class NetworkLayoutBuilder {
     }
 
 
-    public NetworkLayoutBuilder set(NetworkLayout layout) throws NullPointerException{
+    public NetworkLayoutBuilder setState(NetworkLayout layout) throws NullPointerException{
         Objects.requireNonNull(layout);
 		input = layout.getInputLayer();
 		output = layout.getOutputLayer();

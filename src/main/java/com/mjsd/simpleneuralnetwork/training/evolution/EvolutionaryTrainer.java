@@ -14,9 +14,6 @@ import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
 
 public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runnable {
 
-	final private static byte DEF_WEIGHT_RANGE = 1, DEF_BIAS_RANGE = 1;
-
-
 	final private TrainingScenario<E> TRAINING_SCENARIO;
 	final private Ecosystem<E> ECOSYSTEM;
 
@@ -101,11 +98,7 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 	
 
 	final protected static <T extends MutableNeuralNetwork> T getRandomizedNetwork(Supplier<T> networkSupplier){
-		T network = networkSupplier.get();
-
-		NeuralNetworkTools.randomizeWeightsAndBiases(network, DEF_WEIGHT_RANGE, DEF_BIAS_RANGE);
-
-		return network;
+		return NeuralNetworkTools.randomizeWeightsAndBiases(networkSupplier.get());
 	}
 
 	public void stop() throws SecurityException{

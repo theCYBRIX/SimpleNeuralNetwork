@@ -13,11 +13,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 
 @JsonAdapter(SimpleNeuralNetworkAdapter.class)
 public class SimpleNeuralNetwork {
@@ -44,9 +46,12 @@ public class SimpleNeuralNetwork {
 	private InputProvider[] inputProviders;
 
 	final private Object SYNCH_OBJECT = new Object();
-	private boolean parallel = false;
+	private boolean parallelOutputs = false,
+					parallelInputs = false,
+					parallelForwardPass = false;
 	private Runnable inputProtocol = this::getInputsLinear,
-					 outputProtocol = this::handleOutputsLinear;
+					 outputProtocol = this::handleOutputsLinear,
+					 forwardPassProtocol = this::forwardPassLinear;
 
 	protected SimpleNeuralNetwork(SimpleNeuralNetwork template) throws NullPointerException{
 		this(template.LAYOUT, NeuralNetworkTools.deepCopy(template.weights), NeuralNetworkTools.deepCopy(template.biases), Arrays.copyOf(template.outputHandlers, template.outputHandlers.length), Arrays.copyOf(template.inputProviders, template.inputProviders.length));
@@ -148,22 +153,26 @@ public class SimpleNeuralNetwork {
 	public void forwardPass(){
 		synchronized(SYNCH_OBJECT){
 			inputProtocol.run();
-
-			applyLayerModifiers(inputs, inputNormalizer, inputActivation);
-
-			double[] previousLayer = inputs;
-
-			for(int layer = 0; layer < hiddenLayers.length; layer++){
-				hiddenLayers[layer] = vectorSum(dotSequence(previousLayer, weights[layer]), biases[layer]);
-				applyLayerModifiers(hiddenLayers[layer], hiddenNormalizers[layer], hiddenActivations[layer]);
-				previousLayer = hiddenLayers[layer];
-			}
-
-			outputs = vectorSum(dotSequence(previousLayer, weights[OUTPUT_LAYER]), biases[OUTPUT_LAYER]);
-			applyLayerModifiers(outputs, outputNormalizer, outputActivation);
-		
+			forwardPassProtocol.run();
 			outputProtocol.run();
 		}
+	}
+
+	private void forwardPassLinear(){
+		applyLayerModifiers(inputs, inputNormalizer, inputActivation);
+
+		double[] previousLayer = inputs;
+
+		for(int layer = 0; layer < hiddenLayers.length; layer++){
+			dotSequence(previousLayer, weights[layer], hiddenLayers[layer]);
+			vectorSum(hiddenLayers[layer], biases[layer], hiddenLayers[layer]);
+			applyLayerModifiers(hiddenLayers[layer], hiddenNormalizers[layer], hiddenActivations[layer]);
+			previousLayer = hiddenLayers[layer];
+		}
+
+		dotSequence(previousLayer, weights[OUTPUT_LAYER], outputs);
+		vectorSum(outputs, biases[OUTPUT_LAYER], outputs);
+		applyLayerModifiers(outputs, outputNormalizer, outputActivation);
 	}
 
 	private void getInputsLinear(){
@@ -185,22 +194,14 @@ public class SimpleNeuralNetwork {
 		return product;
 	}
 
-	private static double[] dotSequence(double[] v1, double[][] crMatrix) {
-		double product[] = new double[crMatrix.length];
-
+	private static void dotSequence(double[] v1, double[][] crMatrix, double[] destination) {
 		for (int column = 0; column < crMatrix.length; column++)
-			product[column] = dotProduct(v1, crMatrix[column]);
-
-		return product;
+			destination[column] = dotProduct(v1, crMatrix[column]);
 	}
 
-	private static double[] vectorSum(double[] v1, double[] v2) {
-		double sum[] = new double[v1.length];
-
+	private static void vectorSum(double[] v1, double[] v2, double[] destination) {
 		for (int i = 0; i < v1.length; i++)
-			sum[i] = v1[i] + v2[i];
-
-		return sum;
+			destination[i] = v1[i] + v2[i];
     }
 	
 	public SimpleNeuralNetwork copy() {
@@ -246,24 +247,9 @@ public class SimpleNeuralNetwork {
 		if(!(obj instanceof SimpleNeuralNetwork)) return false;
 		SimpleNeuralNetwork other = (SimpleNeuralNetwork)obj;
 
-		if(!NeuralNetworkTools.haveSameLayout(this, other)) return false;
-
-		double[][][] otherWeights = other.weights;
-
-		for(int layer = 0; layer < weights.length; layer++)
-			for(int node = 0; node < weights[layer].length; node++)
-				for(int weight = 0; weight < weights[layer][node].length; weight++)
-					if(this.weights[layer][node][weight] != otherWeights[layer][node][weight])
-						return false;
-
-		double[][] otherBiases = other.biases;
-
-		for(int layer = 0; layer < biases.length; layer++)
-			for(int node = 0; node < biases[layer].length; node++)
-				if(this.biases[layer][node] != otherBiases[layer][node])
-					return false;
-
-		return true;
+		return (NeuralNetworkTools.haveSameLayout(this, other) &&
+		   		NeuralNetworkTools.haveSameWeights(this, other) &&
+		   		NeuralNetworkTools.haveSameBiases(this, other));
 	}
 	
 
@@ -391,6 +377,30 @@ public class SimpleNeuralNetwork {
 		}
 	}
 
+	public void setParallelInputFetching(boolean enabled) {
+		if(parallelInputs == enabled) return;
+		synchronized(SYNCH_OBJECT){
+			parallelInputs = enabled;
+			inputProtocol =  parallelInputs ? new ParallelInputFetcher() : this::getInputsLinear;
+		}
+	}
+
+	public void setParallelOutputHandling(boolean enabled){
+		if(parallelOutputs == enabled) return;
+		synchronized(SYNCH_OBJECT){
+			parallelOutputs = enabled;
+			outputProtocol = parallelOutputs ? new ParallelOutputHandler() : this::handleOutputsLinear;
+		}
+	}
+
+	public void setParallelForwardPass(boolean enabled){
+		if(parallelForwardPass == enabled) return;
+		synchronized(SYNCH_OBJECT){
+			parallelForwardPass = enabled;
+			forwardPassProtocol = parallelForwardPass ? new ParallelForwardPass() : this::forwardPassLinear;
+		}
+	}
+
 
 
 	/**
@@ -414,19 +424,6 @@ public class SimpleNeuralNetwork {
 	}
 
 
-	public void setParallel(boolean enabled) {
-		if(parallel == enabled) return;
-		parallel = enabled;
-		if(parallel){
-			ParallelOperationAdapter adapter = new ParallelOperationAdapter();
-			inputProtocol = adapter::getInputs;
-			outputProtocol = adapter::handleOutputs;
-		} else {
-			inputProtocol = this::getInputsLinear;
-			outputProtocol = this::handleOutputsLinear;
-		}
-	}
-
 
 
 	/*******************************************************************************************************************
@@ -435,15 +432,26 @@ public class SimpleNeuralNetwork {
 
 	private static void applyLayerModifiers(double[] layer, InputNormalizer normalizer, ActivationFunction activationFunction){
 		normalizer.normalize(layer);
-
-		for(int i = 0; i < layer.length; i++)
-			layer[i] = activationFunction.apply(layer, i);
+		activationFunction.applyAll(layer, layer);
 	}
 
 	@JsonAdapter(ActivationFunctionAdapter.class)
 	@FunctionalInterface
 	public interface ActivationFunction{
 		public double apply(double[] layer, int index);
+
+		public default double[] applyAll(double[] layer){
+			double[] applied = new double[layer.length];
+			
+			applyAll(layer, applied);
+
+			return applied;
+		}
+
+		public default void applyAll(double[] layer, double[] destination){
+			for(int i = 0; i < layer.length; i++)
+				destination[i] = apply(layer, i);
+		}
 
         public static ActivationFunction ensureFunction(ActivationFunction function){
             return (function == null) ? ActivationFunctions.LINEAR : function;
@@ -456,7 +464,7 @@ public class SimpleNeuralNetwork {
 		public void normalize(double[] values);
 
         public static InputNormalizer ensureNormalizer(InputNormalizer normalizer){
-            return (normalizer == null) ? InputNormalizers.NO_NORMALIZER : normalizer;
+            return (normalizer == null) ? InputNormalizers.NONE : normalizer;
         }
 	}
 
@@ -467,11 +475,11 @@ public class SimpleNeuralNetwork {
 		public void handle(double output);
 
 		public static OutputHandler ensureHandler(OutputHandler handler){
-			return (handler == null) ? OutputHandler.NO_HANDLER : handler;
+			return (handler == null) ? NO_HANDLER : handler;
 		}
 
 		public static OutputHandler none(){
-			return OutputHandler.NO_HANDLER;
+			return NO_HANDLER;
 		}
 	}
 
@@ -482,53 +490,102 @@ public class SimpleNeuralNetwork {
 		public double orElse(double value);
 
 		private static InputProvider ensureProvider(InputProvider provider){
-			return (provider == null) ? InputProvider.none() : provider;
+			return (provider == null) ? NO_PROVIDER : provider;
 		}
 
-		private static InputProvider none(){
+		public static InputProvider none(){
 			return NO_PROVIDER;
 		}
 	}
 
-	private class ParallelOperationAdapter{
-		private ExecutorService executorService = Executors.newCachedThreadPool();
+	private class ParallelForwardPass implements Runnable{
+		final private ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+		
+		final private ArrayList<Future<Double>> NODE_VALUES;
 
-		@SuppressWarnings("unchecked")
-		private Future<Double>[] inputOperations = new Future[inputProviders.length];
-		private Future<?>[] outputOperations = new Future[outputHandlers.length];
-
-		public void getInputs(){
-			int i;
-			for (i = 0; i < inputProviders.length; i++) {
-				final InputProvider INPUT_PROVIDER = inputProviders[i];
-				final double CURRENT_VALUE = inputs[i];
-				inputOperations[i] = executorService.submit(() -> INPUT_PROVIDER.orElse(CURRENT_VALUE));	
-			}
-
-			for(i = 0; i < inputProviders.length; i++)
-				try {
-					inputs[i] = inputOperations[i].get();
-				} catch (CancellationException | ExecutionException e) {
-					continue;
-				} catch (InterruptedException e) {
-					break;
-				}
+		public ParallelForwardPass(){
+			int initialSize = Arrays.stream(hiddenLayers)
+									.map(x -> x.length)
+									.max((x, y) -> x.compareTo(y))
+									.orElse(inputs.length);
+			NODE_VALUES = new ArrayList<Future<Double>>(initialSize);
 		}
 
-		public void handleOutputs(){
+		@Override
+		public void run() {
+			applyLayerModifiers(inputs, inputNormalizer, inputActivation);
+
+			double[] previousLayer = inputs;
+
+			for(int layer = 0; layer < hiddenLayers.length; layer++){
+
+				NODE_VALUES.clear();
+
+				for (int i = 0; i < weights[layer].length; i++){
+					final double[] PREVIOUS_LAYER = previousLayer;
+					final double[] WEIGHTS = weights[layer][i];
+					NODE_VALUES.add(EXECUTOR_SERVICE.submit(() -> dotProduct(PREVIOUS_LAYER, WEIGHTS)));
+				}
+
+				previousLayer = hiddenLayers[layer];
+
+				for(int i = 0; i < NODE_VALUES.size(); i++)
+					try {
+						hiddenLayers[layer][i] = NODE_VALUES.get(i).get();
+					} catch (ExecutionException | CancellationException e) {
+						continue;
+					} catch (InterruptedException e){
+						break;
+					}
+		
+				vectorSum(hiddenLayers[layer], biases[layer], hiddenLayers[layer]);
+				applyLayerModifiers(hiddenLayers[layer], hiddenNormalizers[layer], hiddenActivations[layer]);
+				previousLayer = hiddenLayers[layer];
+			}
+
+			dotSequence(previousLayer, weights[OUTPUT_LAYER], outputs);
+			vectorSum(outputs, biases[OUTPUT_LAYER], outputs);
+			applyLayerModifiers(outputs, outputNormalizer, outputActivation);
+		}
+
+	}
+
+	private class ParallelInputFetcher implements Runnable {
+		final private ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+
+		private List<Callable<?>> inputOperations = Arrays.asList(new Callable[inputProviders.length]);
+
+		@Override
+		public void run() {
+			int i;
+			for (i = 0; i < inputProviders.length; i++) {
+				final int INDEX = i;
+				inputOperations.set(i, () -> { inputs[INDEX] = inputProviders[INDEX].orElse(inputs[INDEX]); return null; });	
+			}
+
+			try {
+				EXECUTOR_SERVICE.invokeAll(inputOperations);
+			} catch (InterruptedException | RejectedExecutionException e) {}
+		}
+
+	}
+
+	private class ParallelOutputHandler implements Runnable{
+		final private ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+
+		private List<Callable<?>> outputOperations = Arrays.asList(new Callable[outputHandlers.length]);
+
+		@Override
+		public void run(){
 			for (int i = 0; i < outputHandlers.length; i++) {
 				OutputHandler handler = outputHandlers[i];
 				double output = outputs[i];
-				outputOperations[i] = executorService.submit(() -> handler.handle(output));	
+				outputOperations.set(i, () -> { handler.handle(output); return null; });	
 			}
-			for (int i = 0; i < outputHandlers.length; i++) 
-				try {
-					outputOperations[i].get();
-				} catch (CancellationException | ExecutionException e) {
-					continue;
-				} catch (InterruptedException e) {
-					break;
-				}
+			
+			try {
+				EXECUTOR_SERVICE.invokeAll(outputOperations);
+			} catch (InterruptedException | RejectedExecutionException e) {}
 		}
 	}
 	

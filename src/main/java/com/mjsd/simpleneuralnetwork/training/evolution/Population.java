@@ -133,7 +133,7 @@ public class Population<E extends RankedNeuralNetwork> {
 
     public void addAll(Collection<? extends E> networks) throws NullPointerException{
         Objects.requireNonNull(networks, "Collection is null.");
-        if((parallel ? networks.parallelStream() : networks.stream()).anyMatch(x -> x == null)) throw new NullPointerException();
+        if((parallel ? networks.parallelStream() : networks.stream()).anyMatch(x -> x == null)) throw new NullPointerException("Collection contains null.");
         addAllUnchecked(networks);
     }
 

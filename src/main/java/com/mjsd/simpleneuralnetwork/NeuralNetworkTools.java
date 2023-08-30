@@ -16,14 +16,23 @@ import com.mjsd.simpleneuralnetwork.exceptions.LayoutMismatchException;
 import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
 import com.mjsd.simpleneuralnetwork.NetworkLayout.NetworkLayer;
 
-public abstract class NeuralNetworkTools {
+final public class NeuralNetworkTools {
+	final private static double DEFAULT_WEIGHT_ORIGIN = -0.5,
+								DEFAULT_WEIGHT_BOUND = 0.5,
+								DEFAULT_WEIGHT_DEVIATION = 0.5,
 
-	final private static Random RANDOM = new Random();
+								DEFAULT_BIAS_ORIGIN = -1,
+								DEFAULT_BIAS_BOUND = 1,
+								DEFAULT_BIAS_DEVIATION = 1,
+								
+								DEFAULT_MUTATION_RATE = 0.5;
+
+	private NeuralNetworkTools(){}
 
 	/**
 	 * @return A number "N" such that {@code (origin - maxDeviation) < N < (origin + maxDeviation) }.
 	 */
-	private static double randomOffset(double origin, double maxDeviation, Random random) {
+	private static double randomOffset(double origin, double maxDeviation, Random random) throws NullPointerException {
 		return origin + random.nextDouble() * (random.nextBoolean() ? maxDeviation : -maxDeviation);
 	}
 
@@ -31,7 +40,7 @@ public abstract class NeuralNetworkTools {
 	 * @return A number "N" such that {@code (origin - maxDeviation) < N < (origin + maxDeviation) }.
 	 */
 	private static double randomOffset(double origin, double maxDeviation) {
-		return randomOffset(origin, maxDeviation, RANDOM);
+		return randomOffset(origin, maxDeviation, RandomNumberGeneratorHolder.RANDOM);
 	}
 
 
@@ -45,10 +54,6 @@ public abstract class NeuralNetworkTools {
 		return to;
 	}
 
-	public static <T extends MutableNeuralNetwork> T copy(T from, Supplier<T> to) throws DimensionsMismatchException, NullPointerException{
-		return copyWeightsAndBiases(from, to.get());
-	}
-
 	protected static void copyWeightsAndBiasesUnchecked(MutableNeuralNetwork from, MutableNeuralNetwork to) throws NullPointerException{
 		to.weights = NeuralNetworkTools.deepCopy(from.weights);
 		to.biases = NeuralNetworkTools.deepCopy(from.biases);
@@ -56,36 +61,51 @@ public abstract class NeuralNetworkTools {
 
 
 	public static <E extends MutableNeuralNetwork> E shiftWeightsAndBiases(E network, double maxWeightOffset, double maxBiasOffset) throws NullPointerException {
+		return shiftWeightsAndBiases(network, maxWeightOffset, maxBiasOffset, RandomNumberGeneratorHolder.RANDOM);
+	}
+
+	public static <E extends MutableNeuralNetwork> E shiftWeightsAndBiases(E network, double maxWeightOffset, double maxBiasOffset, Random random) throws NullPointerException {
 		double[][][] weights = network.weights;
 		double[][] biases = network.biases;
 		for (int layer = 0; layer < weights.length; layer++)
 			for (int n = 0; n < weights[layer].length; n++) {
-				biases[layer][n] += randomOffset(biases[layer][n], maxBiasOffset);
+				biases[layer][n] += randomOffset(biases[layer][n], maxBiasOffset, random);
 				for (int i = 0; i < weights[layer][n].length; i++)
-					weights[layer][n][i] += randomOffset(weights[layer][n][i], maxWeightOffset);
+					weights[layer][n][i] += randomOffset(weights[layer][n][i], maxWeightOffset, random);
 			}
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, double weightOffset, double biasOffset) throws NullPointerException {
+	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network) throws NullPointerException {
+		return randomizeWeightsAndBiases(network, RandomNumberGeneratorHolder.RANDOM);
+	}
+
+	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, Random random) throws NullPointerException {
+		return randomizeWeightsAndBiases(network, DEFAULT_WEIGHT_ORIGIN, DEFAULT_WEIGHT_BOUND, DEFAULT_BIAS_ORIGIN, DEFAULT_BIAS_BOUND, random);
+	}
+
+	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, double weightOrigin, double weightBound, double biasOrigin, double biasBound) throws NullPointerException {
+		return randomizeWeightsAndBiases(network, weightOrigin, weightBound, biasOrigin, biasBound, RandomNumberGeneratorHolder.RANDOM);
+	}
+
+	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, double weightOrigin, double weightBound, double biasOrigin, double biasBound, Random random) throws NullPointerException {
 		double[][][] weights = network.weights;
 		double[][] biases = network.biases;
 		for (int layer = 0; layer < weights.length; layer++)
 			for (int n = 0; n < weights[layer].length; n++) {
-				biases[layer][n] = randomOffset(biases[layer][n], biasOffset);
+				biases[layer][n] = random.nextDouble(biasOrigin, biasBound);
 				for (int i = 0; i < weights[layer][n].length; i++)
-					weights[layer][n][i] = randomOffset(weights[layer][n][i], weightOffset);
+					weights[layer][n][i] = random.nextDouble(weightOrigin, weightBound);
 			}
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E adjustWeight(E network, int layer, int node, int weight, double adjustAmount) throws NullPointerException {
-		double[][][] weights = network.weights;
-		weights[layer][node][weight] += adjustAmount;
+	public static <E extends MutableNeuralNetwork> E adjustWeight(E network, int layer, int node, int weight, double adjustAmount) throws NullPointerException, ArrayIndexOutOfBoundsException {
+		network.weights[layer][node][weight] += adjustAmount;
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E adjustWeights(E network, double maxOffset) throws NullPointerException {
+	public static <E extends MutableNeuralNetwork> E shiftWeightsRandom(E network, double maxOffset) throws NullPointerException {
 		double[][][] weights = network.weights;
 		for (int layer = 0; layer < weights.length; layer++)
 			for (int w = 0; w < weights[layer].length; w++)
@@ -105,7 +125,7 @@ public abstract class NeuralNetworkTools {
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E adjustBias(E network, int layer, int node, double adjustAmount) throws NullPointerException {
+	public static <E extends MutableNeuralNetwork> E adjustBias(E network, int layer, int node, double adjustAmount) throws NullPointerException, ArrayIndexOutOfBoundsException {
 		network.biases[layer][node] += adjustAmount;
 		return network;
 	}
@@ -215,83 +235,67 @@ public abstract class NeuralNetworkTools {
 		return child;
 	}
 
-	public static <E extends MutableNeuralNetwork> E getRandomizedNetwork(Supplier<E> networkSource) throws NullPointerException{
-		Objects.requireNonNull(networkSource, "Network Supplier is null.");
-		return randomizeWeightsAndBiases(networkSource.get(), 1, 1);
-	}
-
-	public static <E extends MutableNeuralNetwork> ArrayList<E> getRandomizedNetworks(int numNetworks, Supplier<E> networkSource) throws IllegalArgumentException, NullPointerException{
-		Objects.requireNonNull(networkSource, "Network Supplier is null.");
+	public static <E extends MutableNeuralNetwork> ArrayList<E> getRandomizedNetworks(int numNetworks, Supplier<E> networkSupplier) throws IllegalArgumentException, NullPointerException{
+		Objects.requireNonNull(networkSupplier, "Network Supplier is null.");
 
 		ArrayList<E> networks = new ArrayList<>(numNetworks);
 		for(int i = 0; i < numNetworks; i++)
-			networks.add(randomizeWeightsAndBiases(networkSource.get(), 1, 1));
+			networks.add(randomizeWeightsAndBiases(networkSupplier.get()));
 
 		return networks;
 	}
 
-	public static <E extends MutableNeuralNetwork> E getMutation(E baseNetwork, Supplier<E> networkSource, double maxWeightDeviation, double maxBiasDeviation) throws IllegalArgumentException, NullPointerException{
-		Objects.requireNonNull(networkSource, "Network Supplier is null.");
-		return getMutation(networkSource, baseNetwork.getWeights(), baseNetwork.getBiases(), maxWeightDeviation, maxBiasDeviation);
+	public static <E extends MutableNeuralNetwork> ArrayList<E> getRandomizedNetworks(int numNetworks, Supplier<E> networkSupplier, double weightOrigin, double weightBound, double biasOrigin, double biasBound) throws IllegalArgumentException, NullPointerException{
+		Objects.requireNonNull(networkSupplier, "Network Supplier is null.");
+
+		ArrayList<E> networks = new ArrayList<>(numNetworks);
+		for(int i = 0; i < numNetworks; i++)
+			networks.add(randomizeWeightsAndBiases(networkSupplier.get(), weightOrigin, weightBound, biasOrigin, biasBound));
+
+		return networks;
 	}
 
-	public static <E extends MutableNeuralNetwork> List<E> getMutations(E baseNetwork, int numMutations, Supplier<E> networkSource, double maxWeightDeviation, double maxBiasDeviation) throws IllegalArgumentException, NullPointerException{
-		Objects.requireNonNull(networkSource, "Network Supplier is null.");
+	public static <E extends MutableNeuralNetwork> List<E> getMutations(Supplier<E> copySupplier, int numMutations, double maxWeightDeviation, double maxBiasDeviation, double mutationRate) throws IllegalArgumentException, NullPointerException{
+		Objects.requireNonNull(copySupplier, "Network Supplier is null.");
 		ArrayList<E> mutations = new ArrayList<>(numMutations);
-		double[][][] weights = baseNetwork.getWeights();
-		double[][] biases = baseNetwork.getBiases();
 		
-		E mutation;
-		for(int i = 0; i < numMutations; i++){
-			mutation = getMutation(networkSource, weights, biases, maxWeightDeviation, maxBiasDeviation);
-			mutations.add(mutation);
-		}
+		for(int i = 0; i < numMutations; i++)
+			mutations.add(mutate(copySupplier.get(), maxWeightDeviation, maxBiasDeviation, mutationRate));
 
 		return mutations;
 	}
 
-	private static <E extends MutableNeuralNetwork> E getMutation(Supplier<E> networkSource, double[][][] weights, double[][] biases, double maxWeightDeviation, double maxBiasDeviation) throws IllegalArgumentException, NullPointerException{
-		E mutation = networkSource.get();
-		mutation.setWeights(weights);
-		mutation.setBiases(biases);
-		shiftWeightsAndBiases(mutation, maxWeightDeviation, maxBiasDeviation);
-
-		return mutation;
-	}
-
-	public static <E extends MutableNeuralNetwork> E randomMutation(E network, double maxWeightDeviation, double maxBiasDeviation, Random random){
+	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate, Random random){
 		double[][][] weights = network.weights;
 		double[][] biases = network.biases;
 
 		for(int layer = 0; layer < weights.length; layer++)
 			for(int node = 0; node < weights[layer].length; node++){
-				if(random.nextBoolean()) biases[layer][node] = randomOffset(biases[layer][node], maxBiasDeviation, random);
+				if(random.nextDouble() < mutationRate) biases[layer][node] = randomOffset(biases[layer][node], maxBiasDeviation, random);
 				for(int weight = 0; weight < weights[layer][node].length; weight++)
-					if(random.nextBoolean()) weights[layer][node][weight] = randomOffset(weights[layer][node][weight], maxWeightDeviation, random);
+					if(random.nextDouble() < mutationRate) weights[layer][node][weight] = randomOffset(weights[layer][node][weight], maxWeightDeviation, random);
 			}
-
 
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E randomMutation(E network, double maxWeightDeviation, double maxBiasDeviation){
-		return randomMutation(network, maxWeightDeviation, maxBiasDeviation, RANDOM);
+	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate){
+		return mutate(network, maxWeightDeviation, maxBiasDeviation, mutationRate, RandomNumberGeneratorHolder.RANDOM);
 	}
 
-	public static <E extends MutableNeuralNetwork> Set<E> createUniqueMutations(E baseNetwork, double maxWeightDeviation, double maxBiasDeviation, Supplier<E> networkSource, int numMutations) throws IllegalArgumentException, NullPointerException{
-		HashSet<E> mutations = new HashSet<>(numMutations);
-		
-		double[][][] weights = baseNetwork.getWeights();
-		double[][] biases = baseNetwork.getBiases();
-		E mutation;
+	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation){
+		return mutate(network, maxWeightDeviation, maxBiasDeviation, DEFAULT_MUTATION_RATE);
+	}
 
-		while(mutations.size() < numMutations){
-			mutation = networkSource.get();
-			mutation.setWeights(weights);
-			mutation.setBiases(biases);
-			shiftWeightsAndBiases(mutation, maxWeightDeviation, maxBiasDeviation);
-			mutations.add(mutation);
-		}
+	public static <E extends MutableNeuralNetwork> E mutate(E network){
+		return mutate(network, DEFAULT_WEIGHT_DEVIATION, DEFAULT_BIAS_DEVIATION);
+	}
+
+	public static <E extends MutableNeuralNetwork> Set<E> createUniqueMutations(Supplier<E> copySupplier, int numMutations, double maxWeightDeviation, double maxBiasDeviation) throws IllegalArgumentException, NullPointerException{
+		HashSet<E> mutations = new HashSet<>(numMutations);
+
+		while(mutations.size() < numMutations)
+			mutations.add(mutate(copySupplier.get(), maxWeightDeviation, maxBiasDeviation));
 
 		return mutations;
 	}
@@ -299,9 +303,8 @@ public abstract class NeuralNetworkTools {
 	public static <E extends MutableNeuralNetwork> Set<E> createUniqueChildren(E parent1, E parent2, Supplier<E> childSource, int numChildren) throws IllegalArgumentException, NullPointerException{
 		HashSet<E> children = new HashSet<>(numChildren);
 
-		while(children.size() < numChildren){ 
+		while(children.size() < numChildren)
 			children.add(NeuralNetworkTools.singlePointCrossover(parent1, parent2, childSource));
-		}
 
 		return children;
 	}
@@ -394,8 +397,33 @@ public abstract class NeuralNetworkTools {
 		return true;
 	}
 
-	private static boolean haveSameLayout(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) {		
-		return network1.getLayout().equals(network2.getLayout());
+	public static boolean haveSameLayout(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws NullPointerException {		
+		return network1.LAYOUT.equals(network2.LAYOUT);
+	}
+
+	public static boolean haveSameWeights(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws ArrayIndexOutOfBoundsException {
+		double[][][] weights1 = network1.weights,
+					 weights2 = network2.weights;
+
+		for(int layer = 0; layer < weights1.length; layer++)
+			for(int node = 0; node < weights1[layer].length; node++)
+				for(int weight = 0; weight < weights1[layer][node].length; weight++)
+					if(weights1[layer][node][weight] != weights2[layer][node][weight])
+						return false;
+		
+		return true;
+	}
+
+	public static boolean haveSameBiases(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws ArrayIndexOutOfBoundsException {		
+		double[][] biases1 = network1.biases;
+		double[][] biases2 = network2.biases;
+
+		for(int layer = 0; layer < biases1.length; layer++)
+			for(int node = 0; node < biases1[layer].length; node++)
+				if(biases1[layer][node] != biases2[layer][node])
+					return false;
+
+		return true;
 	}
 
 	public static void requireSameDimensions(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws DimensionsMismatchException, NullPointerException {
@@ -495,5 +523,9 @@ public abstract class NeuralNetworkTools {
 			}
 		}
 		return copy;
+	}
+
+	private static class RandomNumberGeneratorHolder{
+		final public static Random RANDOM = new Random();
 	}
 }

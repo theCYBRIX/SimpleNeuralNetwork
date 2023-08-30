@@ -1,6 +1,6 @@
 package com.mjsd.simpleneuralnetwork.training;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 
 import com.google.gson.JsonSyntaxException;
@@ -25,7 +25,7 @@ public class RankedNeuralNetworkBuilder extends NeuralNetworkBuilder<RankedNeura
         super(NETWORK_SUPPLIER, initialState);
     }
 
-    public RankedNeuralNetworkBuilder(NetworkLayout initialState, Collection<InputProvider> inputProviders, Collection<OutputHandler> outputHandlers) throws NullPointerException{
+    public RankedNeuralNetworkBuilder(NetworkLayout initialState, List<InputProvider> inputProviders, List<OutputHandler> outputHandlers) throws NullPointerException{
         super(NETWORK_SUPPLIER, initialState, inputProviders, outputHandlers);
     }
 

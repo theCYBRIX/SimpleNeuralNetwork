@@ -10,7 +10,7 @@ import com.mjsd.simpleneuralnetwork.training.evolution.SimpleOffspringProvider.S
 public class RandomMutation<E extends MutableNeuralNetwork> extends SingleParentOffspringProvider<E> {
 
     public RandomMutation(double maxWeightDeviation, double maxBiasDeviation, Supplier<E> networkSupplier) throws NullPointerException{
-        super(x -> NeuralNetworkTools.randomMutation(NeuralNetworkTools.copy(x, networkSupplier), maxWeightDeviation, maxBiasDeviation));
+        super(x -> NeuralNetworkTools.mutate(NeuralNetworkTools.copyWeightsAndBiases(x, networkSupplier.get()), maxWeightDeviation, maxBiasDeviation));
         Objects.requireNonNull(networkSupplier, "Supplier is null.");
     }
 
