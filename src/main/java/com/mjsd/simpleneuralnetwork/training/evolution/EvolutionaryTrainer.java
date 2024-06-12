@@ -15,7 +15,7 @@ import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
 public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runnable {
 
 	final private TrainingScenario<E> TRAINING_SCENARIO;
-	final private Ecosystem<E> ECOSYSTEM;
+	final private Population<E> POPULATION;
 
 	private boolean running = false, keepAlive;
 
@@ -25,9 +25,9 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 
 	private int generation = 1;
 
-	public EvolutionaryTrainer(Ecosystem<E> ecosystem, TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
+	public EvolutionaryTrainer(Population<E> ecosystem, TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
 		this.TRAINING_SCENARIO = Objects.requireNonNull(trainingScenario);
-		this.ECOSYSTEM = Objects.requireNonNull(ecosystem);
+		this.POPULATION = Objects.requireNonNull(ecosystem);
 	}
 
 	@Override
@@ -37,11 +37,11 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 			keepAlive = true;
 			running = true;
 			runningThread = Thread.currentThread();
-			ArrayList<E> newGeneration;
-			ECOSYSTEM.ensureSufficientNetworks();
+			Collection<E> newGeneration;
+			POPULATION.ensureSufficientNetworks();
 			while(keepAlive){
 
-				newGeneration = ECOSYSTEM.getCurrentGeneration();
+				newGeneration = POPULATION.getMembers();
 
 				TRAINING_SCENARIO.setParticipants(newGeneration);
 				TRAINING_SCENARIO.run();
@@ -52,7 +52,7 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 
 				if(Thread.interrupted()) break;
 
-				ECOSYSTEM.populateNewGeneration();
+				POPULATION.populateNewGeneration();
 				generation++;
 			}
 		} catch (Exception e){
@@ -77,23 +77,23 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 	}
 
 	public void add(E network) throws NullPointerException{
-		ECOSYSTEM.add(network);
+		POPULATION.add(network);
 	}
 
 	public void addAll(Collection<? extends E> networks) throws NullPointerException{
-		ECOSYSTEM.addAll(networks);
+		POPULATION.addAll(networks);
 	}
 
 	public Optional<Double> getBestScore(){
-		return ECOSYSTEM.getBestScore();
+		return POPULATION.getBestScore();
 	}
 	
 	public List<E> getLeaderBoard(){
-		return ECOSYSTEM.getLeaderBoard();
+		return POPULATION.getLeaderBoard();
 	}
 	
 	public List<E> getLeaderBoard(Comparator<E> comparator){
-		return ECOSYSTEM.getLeaderBoard(comparator);
+		return POPULATION.getLeaderBoard(comparator);
 	}
 	
 
@@ -122,8 +122,8 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 		this.generation = generation;
 	}
 	
-	public Ecosystem<E> getEcosystem() {
-		return ECOSYSTEM;
+	public Population<E> getPopulation() {
+		return POPULATION;
 	}
 
 }

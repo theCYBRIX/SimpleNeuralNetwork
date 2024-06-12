@@ -11,6 +11,9 @@ public class NetworkLayoutBuilder {
 
     protected NetworkLayer input = null, output = null;
     protected LinkedList<NetworkLayer> hiddenLayers = new LinkedList<>();
+    private NetworkLayout layout;
+
+    private boolean layoutCached = false;
 
 
     public NetworkLayoutBuilder(){}
@@ -40,9 +43,15 @@ public class NetworkLayoutBuilder {
 
 
     public NetworkLayout build() throws IllegalStateException{
+        if(layoutCached) return layout;
+
         if(input == null) throw new IllegalStateException("Input layer properties are not specified.");
         if(output == null) throw new IllegalStateException("Output layer properties are not specified.");
-        return new NetworkLayout(input, output, hiddenLayers);
+
+        layout = new NetworkLayout(input, output, hiddenLayers);
+        layoutCached = true;
+
+        return layout;
     }
 
 
@@ -52,6 +61,9 @@ public class NetworkLayoutBuilder {
 		output = layout.getOutputLayer();
         hiddenLayers.clear();
 		hiddenLayers.addAll(layout.getHiddenLayers());
+
+        this.layout = layout;
+        layoutCached = true;
         return this;
     }
 
@@ -59,11 +71,15 @@ public class NetworkLayoutBuilder {
         this.input = null;
         this.output = null;
         hiddenLayers.clear();
+
+        layoutCached = false;
+        layout = null;
     }
 
 
     private NetworkLayoutBuilder withInputLayerUnchecked(NetworkLayer input) {
         this.input = input;
+        layoutCached = false;
         return this;
     }
 
@@ -90,6 +106,7 @@ public class NetworkLayoutBuilder {
 
     private NetworkLayoutBuilder withOutputLayerUnchecked(NetworkLayer output) {
         this.output = output;
+        layoutCached = false;
         return this;
     }
 
@@ -117,6 +134,10 @@ public class NetworkLayoutBuilder {
 
     private NetworkLayoutBuilder addLayerUnchecked(NetworkLayer layer) {
         hiddenLayers.add(layer);
+        if(layoutCached){
+            layoutCached = false;
+            layout = null;
+        }
         return this;
     }
 

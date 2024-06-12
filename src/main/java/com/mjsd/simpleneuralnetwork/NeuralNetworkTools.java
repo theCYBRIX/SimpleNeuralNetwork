@@ -10,7 +10,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import com.mjsd.simpleneuralnetwork.exceptions.ArraySizeMismatchException;
 import com.mjsd.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.mjsd.simpleneuralnetwork.exceptions.LayoutMismatchException;
 import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
@@ -42,6 +41,33 @@ final public class NeuralNetworkTools {
 	private static double randomOffset(double origin, double maxDeviation) {
 		return randomOffset(origin, maxDeviation, RandomNumberGeneratorHolder.RANDOM);
 	}
+	
+	private static double nextDouble(double origin, double bound, Random random) {
+		return origin + random.nextDouble() * bound;
+	}
+	
+	public static double nextDouble(double origin, double bound) {
+		return nextDouble(origin, bound, RandomNumberGeneratorHolder.RANDOM);
+	}
+
+	protected static double dotProduct(double[] v1, double[] v2) {
+		double product = 0;
+
+		for (int i = 0; i < v1.length; i++)
+			product += v1[i] * v2[i];
+
+		return product;
+	}
+
+	protected static void dotSequence(double[] v1, double[][] crMatrix, double[] destination) {
+		for (int column = 0; column < crMatrix.length; column++)
+			destination[column] = dotProduct(v1, crMatrix[column]);
+	}
+
+	protected static void vectorSum(double[] v1, double[] v2, double[] destination) {
+		for (int i = 0; i < v1.length; i++)
+			destination[i] = v1[i] + v2[i];
+    }
 
 
 	/*******************************************************************************************************************
@@ -93,9 +119,9 @@ final public class NeuralNetworkTools {
 		double[][] biases = network.biases;
 		for (int layer = 0; layer < weights.length; layer++)
 			for (int n = 0; n < weights[layer].length; n++) {
-				biases[layer][n] = random.nextDouble(biasOrigin, biasBound);
+				biases[layer][n] = nextDouble(biasOrigin, biasBound, random);
 				for (int i = 0; i < weights[layer][n].length; i++)
-					weights[layer][n][i] = random.nextDouble(weightOrigin, weightBound);
+					weights[layer][n][i] = nextDouble(weightOrigin, weightBound, random);
 			}
 		return network;
 	}
@@ -137,20 +163,6 @@ final public class NeuralNetworkTools {
 				biases[layer][b] = randomOffset(biases[layer][b], maxOffset);
 		return network;
 	}
-    
-	public static double categoricalCrossEntropy(double[] targetOutput, double[] actualOutput) throws ArraySizeMismatchException, NullPointerException {
-        if (Objects.requireNonNull(targetOutput).length != Objects.requireNonNull(actualOutput).length)
-            throw new ArraySizeMismatchException("Arrays must be of equal size. (" + targetOutput.length + " != " + actualOutput.length + ")");
-
-        double loss = 0;
-
-        for (int i = 0; i < targetOutput.length; i++)
-            loss += Math.log(actualOutput[i] * targetOutput[i]);
-
-        loss = (-loss);
-
-        return loss;
-    }
 
 	/**
 	 * Crosses two networks weights at a random point within each layer.
@@ -502,24 +514,22 @@ final public class NeuralNetworkTools {
 		return randoms;
 	}
 
-	final public static double[][] deepCopy(double[][] toCopy){
-		double[][] copy = new double[toCopy.length][];
-		for(int i = 0; i < toCopy.length; i++){
-			copy[i] = new double[toCopy[i].length];
-			for(int j = 0; j < toCopy[i].length; j++)
-				copy[i][j] = toCopy[i][j];
+	final public static double[][] deepCopy(double[][] original){
+		double[][] copy = new double[original.length][];
+		for(int i = 0; i < original.length; i++){
+			copy[i] = new double[original[i].length];
+			System.arraycopy(original[i], 0, copy[i], 0, original[i].length);
 		}
 		return copy;
 	}
 
-	final public static double[][][] deepCopy(double[][][] toCopy){
-		double[][][] copy = new double[toCopy.length][][];
-		for(int i = 0; i < toCopy.length; i++){
-			copy[i] = new double[toCopy[i].length][];
-			for(int j = 0; j < toCopy[i].length; j++){
-				copy[i][j] = new double[toCopy[i][j].length];
-				for(int k = 0; k < toCopy[i][j].length; k++)
-					copy[i][j][k] = toCopy[i][j][k];
+	final public static double[][][] deepCopy(double[][][] original){
+		double[][][] copy = new double[original.length][][];
+		for(int i = 0; i < original.length; i++){
+			copy[i] = new double[original[i].length][];
+			for(int j = 0; j < original[i].length; j++){
+				copy[i][j] = new double[original[i][j].length];
+				System.arraycopy(original[i][j], 0, copy[i][j], 0, original[i][j].length);
 			}
 		}
 		return copy;

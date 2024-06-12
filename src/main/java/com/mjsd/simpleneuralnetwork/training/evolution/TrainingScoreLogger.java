@@ -50,7 +50,7 @@ public class TrainingScoreLogger implements Consumer<EvolutionaryTrainer<? exten
 
     @Override
     public void accept(EvolutionaryTrainer<? extends RankedNeuralNetwork> trainer) {
-        updateScoreHistory(trainer.getEcosystem().getBestScore());
+        updateScoreHistory(trainer.getPopulation().getBestScore());
     }
  
 	public List<Double> getScoreHistory(){

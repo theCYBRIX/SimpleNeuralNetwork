@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import com.mjsd.simpleneuralnetwork.exceptions.IllegalTermCountException;
 import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
 
-public class Ecosystem<E extends RankedNeuralNetwork> {
+public class Ecosystem<E extends RankedNeuralNetwork> implements Population<E> {
 
     final private List<Population<E>> POPULATIONS;
     final private int[] POPULATION_SIZES;
@@ -27,7 +27,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
     private boolean parallel = false;
     private Supplier<Stream<Population<E>>> populationStream;
     
-    public Ecosystem(int totalNumNetworks, Collection<Population<E>> populations, CompoundRatio networkDistribution) throws IllegalArgumentException, NullPointerException {
+    public Ecosystem(int totalNumNetworks, Collection<? extends Population<E>> populations, CompoundRatio networkDistribution) throws IllegalArgumentException, NullPointerException {
         if(totalNumNetworks < 0) throw new IllegalArgumentException("Illegal number of networks: " + totalNumNetworks);
 
         if(populations.stream().anyMatch(x -> x == null)) throw new NullPointerException("Collection of populations contains null.");
@@ -43,7 +43,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
         setPopulationsParallel(parallel);
     }
     
-    public Ecosystem(int totalNumNetworks, Collection<Population<E>> populations) throws IllegalArgumentException, NullPointerException{
+    public Ecosystem(int totalNumNetworks, Collection<? extends Population<E>> populations) throws IllegalArgumentException, NullPointerException{
         this(totalNumNetworks, populations, CompoundRatio.uniform(populations.size()));
     }
     
@@ -53,7 +53,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
         Objects.requireNonNull(population, "Population is null.");
 
         this.totalNumNetworks = totalNumNetworks;
-        population.setNumNetworks(totalNumNetworks);
+        population.setSize(totalNumNetworks);
 
         POPULATIONS = Collections.unmodifiableList(Arrays.asList(population));
         populationStream = POPULATIONS::stream;
@@ -64,7 +64,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
         setPopulationsParallel(parallel);
     }
 
-    public int getNumNetworks() {
+    public int size() {
         return totalNumNetworks;
     }
 
@@ -87,25 +87,25 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
     public ArrayList<E> getLeaderBoard(Comparator<E> comparator){
         ArrayList<E> leaderBoard = new ArrayList<>(totalNumNetworks);
         populationStream.get()
-                        .map(x -> x.getPreviousLeaderBoard())
+                        .map(x -> x.getLeaderBoard())
                         .flatMap(x -> x.stream())
                         .sorted(comparator == null ? (x, y) -> x.compareTo(y) : comparator)
                         .forEachOrdered(x -> leaderBoard.add(x));
         return leaderBoard;
     }
 
-    public ArrayList<E> getCurrentGeneration(){
+    public ArrayList<E> getMembers(){
         ArrayList<E> networks = new ArrayList<>(totalNumNetworks);
 
         for(Population<E> population : POPULATIONS)
-            networks.addAll(population.currentGeneration);
+            networks.addAll(population.getMembers());
 
         return networks;
     }
 
     public void add(E network){
         Objects.requireNonNull(network, "Network is null.");
-        populationStream.get().forEach(x -> x.addUnchecked(network));
+        populationStream.get().forEach(x -> x.add(network));
     }
 
     public void addAll(Collection<? extends E> networks){
@@ -113,10 +113,10 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
         if((parallel ? networks.parallelStream() : networks.stream()).anyMatch(x -> x == null))
             Objects.requireNonNull(networks, "Collection contains null.");
 
-        populationStream.get().forEach(x -> x.addAllUnchecked(networks));
+        populationStream.get().forEach(x -> x.addAll(networks));
     }
 
-    public void setNumNetworks(int totalNumNetworks) throws IllegalArgumentException {
+    public void setSize(int totalNumNetworks) throws IllegalArgumentException {
         if(totalNumNetworks < 0) throw new IllegalArgumentException("Illegal total number of networks: " + totalNumNetworks);
         this.totalNumNetworks = totalNumNetworks;
         updatePopulationSizes();
@@ -136,7 +136,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
     private void updatePopulationSizes(){
         for(int i = 0; i < POPULATIONS.size(); i++){
             POPULATION_SIZES[i] = Math.round(totalNumNetworks * networkDistribution[i]);
-            POPULATIONS.get(i).setNumNetworks(POPULATION_SIZES[i]);
+            POPULATIONS.get(i).setSize(POPULATION_SIZES[i]);
         }
     }
 
@@ -172,7 +172,7 @@ public class Ecosystem<E extends RankedNeuralNetwork> {
         return parallel;
     }
 
-    protected void ensureSufficientNetworks(){
+    public void ensureSufficientNetworks(){
         populationStream.get().forEach(x -> x.ensureSufficientNetworks());
     }
 

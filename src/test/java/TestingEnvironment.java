@@ -11,8 +11,14 @@ import java.util.function.Consumer;
 import com.google.gson.JsonParseException;
 import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
+import com.mjsd.simpleneuralnetwork.Serialization.NetworkSerializer;
 
 public abstract class TestingEnvironment {
+
+    public enum FileType {
+        SNN,
+        JSON
+    }
 
     static void println(String string){
         System.out.println(string);
@@ -46,36 +52,65 @@ public abstract class TestingEnvironment {
         return formatted.toString(); 
     }
 
-    public static <T extends SimpleNeuralNetwork> T networkFromFile(String filePath, Class<T> networkType) throws FileNotFoundException, IOException, JsonParseException {
+    public static <T extends SimpleNeuralNetwork> T networkFromJson(String filePath, Class<T> networkType) throws FileNotFoundException, IOException, JsonParseException {
+        if(!filePath.endsWith(".json")) filePath += ".json";
         File saveFile = new File(filePath);
 
         if(!saveFile.isFile()) throw new FileNotFoundException("File does not exist: " + saveFile.getAbsolutePath());
 
-        BufferedReader reader = new BufferedReader(new FileReader(saveFile));
         StringBuffer buffer = new StringBuffer();
-        String fragment = reader.readLine();
-        while(fragment != null){
-            buffer.append(fragment);
-            fragment = reader.readLine();
+
+        try(BufferedReader reader = new BufferedReader(new FileReader(saveFile))){
+            String fragment = reader.readLine();
+            while(fragment != null){
+                buffer.append(fragment);
+                fragment = reader.readLine();
+            }
         }
-        reader.close();
         
         return NeuralNetworkBuilder.fromJson(buffer.toString(), networkType);
     }    
 
-    public static void saveNetwork(SimpleNeuralNetwork network, String path) throws IOException{
-        saveNetwork(network, path, null);
+    public static void saveNetwork(SimpleNeuralNetwork network, String path, FileType fileType) throws IOException{
+        saveNetwork(network, path, fileType, null);
     }
 
-    public static void saveNetwork(SimpleNeuralNetwork network, String path, Consumer<Exception> onException) {
+    public static void saveNetwork(SimpleNeuralNetwork network, String path, FileType fileType, Consumer<Exception> onException) {
+
+        switch (fileType) {
+            case JSON:
+                saveNetworkJson(network, path, onException);
+                break;
+            case SNN:
+                saveNetworkSNN(network, path, onException);
+                break;
+        }
+
+    }
+
+    public static void saveNetworkJson(SimpleNeuralNetwork network, String path, Consumer<Exception> onException){
         onException = (onException == null) ? x -> x.printStackTrace() : onException;
+
+        if(!path.endsWith(".json")) path += ".json";
+
+        File saveFile = new File(path);
         try {
-            File saveFile = new File(path);
             if(!saveFile.exists()) saveFile.createNewFile();
-            BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile));
-            writer.write(network.toJson());
-            writer.flush();
-            writer.close();
+
+            try(BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile))) {
+                writer.write(network.toJson());
+            }
+                
+        } catch (IOException e) {
+            onException.accept(e);
+        }
+    }
+
+    public static void saveNetworkSNN(SimpleNeuralNetwork network, String path, Consumer<Exception> onException){
+        onException = (onException == null) ? x -> x.printStackTrace() : onException;
+        NetworkSerializer serializer = new NetworkSerializer();
+        try {
+            serializer.save(network, path, true);
         } catch (Exception e) {
             onException.accept(e);
         }

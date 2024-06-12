@@ -1,15 +1,23 @@
 package com.mjsd.simpleneuralnetwork;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Function;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-
+import com.mjsd.simpleneuralnetwork.Serialization.NetworkDeserializer;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.ActivationFunction;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.InputNormalizer;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.InputProvider;
@@ -18,15 +26,16 @@ import com.mjsd.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.mjsd.simpleneuralnetwork.gson.CustomGsonFactory;
 
 public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
+
     final private Function<NetworkLayout, E> NETWORK_SUPPLIER;
     private NetworkLayoutBuilder layoutBuilder;
     private List<InputProvider> inputProviders;
     private List<OutputHandler> outputHandlers;
-    private double[][][] weights = null;
-    private double[][] biases = null;
-    private Optional<Boolean> parallelInputFetching = Optional.empty(),
-                              parallelOutputHandling = Optional.empty(),
-                              parallelForwardPass = Optional.empty();
+    private Optional<double[][][]> weights = Optional.empty();
+    private Optional<double[][]> biases = Optional.empty();
+    private Optional<ExecutorService> inputFetchingService = Optional.empty(),
+                              outputHandlingService = Optional.empty(),
+                              forwardPassService = Optional.empty();
 
     public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier) throws NullPointerException{
         NETWORK_SUPPLIER = Objects.requireNonNull(supplier);
@@ -42,21 +51,19 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
         inputProviders = initialState.getInputProviders();
         outputHandlers = initialState.getOutputHandlers();
 
-        double[][][] initialWeights = initialState.getWeights();
-        double[][] initialBiases = initialState.getBiases();
-        this.weights = Arrays.copyOf(initialWeights, initialWeights.length);
-        this.biases = Arrays.copyOf(initialBiases, initialBiases.length);
+        this.weights = Optional.of(NeuralNetworkTools.deepCopy(initialState.getWeights()));
+        this.biases = Optional.of(NeuralNetworkTools.deepCopy(initialState.getBiases()));
     }
 
     public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, NetworkLayout initialState) throws NullPointerException{
         this(supplier, initialState, null, null);
     }
 
-    public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, NetworkLayout initialState, List<InputProvider> inputProvider, List<OutputHandler> outputHandler) throws NullPointerException{
+    public NeuralNetworkBuilder(Function<NetworkLayout, E> supplier, NetworkLayout initialState, List<InputProvider> inputProviders, List<OutputHandler> outputHandlers) throws NullPointerException{
         NETWORK_SUPPLIER = Objects.requireNonNull(supplier);
         this.layoutBuilder = new NetworkLayoutBuilder(initialState);
-        withInputProviders(inputProvider);
-        withOutputHandlers(outputHandler);
+        withInputProviders(inputProviders);
+        withOutputHandlers(outputHandlers);
     }
 
 
@@ -69,22 +76,19 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
      */
     public E build() throws IllegalStateException {
         E instance = NETWORK_SUPPLIER.apply(layoutBuilder.build());
-        if(parallelInputFetching.isPresent()) instance.setParallelInputFetching(parallelInputFetching.get());
-        if(parallelOutputHandling.isPresent()) instance.setParallelOutputHandling(parallelOutputHandling.get());
-        if(parallelForwardPass.isPresent()) instance.setParallelForwardPass(parallelForwardPass.get());
+        instance.inputProtocol = inputFetchingService.isPresent() ? new ParallelInputFetcher(instance, inputFetchingService.get()) : instance::getInputsLinear;
+        instance.outputProtocol = outputHandlingService.isPresent() ? new ParallelOutputHandler(instance, outputHandlingService.get()) : instance::handleOutputsLinear;
+        instance.forwardPassProtocol = forwardPassService.isPresent() ? new ParallelForwardPass(instance, forwardPassService.get()) : instance::forwardPassLinear;
 
         try {
             if(inputProviders != null) instance.setInputProviders(inputProviders);
             if(outputHandlers != null) instance.setOutputHandlers(outputHandlers);
 
-            boolean setBiases = biases != null,
-                    setWeights = weights != null;
+            if(biases.isPresent()) NeuralNetworkTools.ensureValidBiasArray(instance.LAYOUT, biases.get());
+            if(weights.isPresent()) NeuralNetworkTools.ensureValidWeightArray(instance.LAYOUT, weights.get());
 
-            if(setBiases) NeuralNetworkTools.ensureValidBiasArray(instance.LAYOUT, biases);
-            if(setWeights) NeuralNetworkTools.ensureValidWeightArray(instance.LAYOUT, weights);
-
-            if(setBiases) instance.biases = NeuralNetworkTools.deepCopy(biases);
-            if(setWeights) instance.weights = NeuralNetworkTools.deepCopy(weights);
+            if(biases.isPresent()) instance.biases = NeuralNetworkTools.deepCopy(biases.get());
+            if(weights.isPresent()) instance.weights = NeuralNetworkTools.deepCopy(weights.get());
 
         } catch (IllegalArgumentException | DimensionsMismatchException e) {
             throw new IllegalStateException("Unable to build neural network from current state.", e);
@@ -187,12 +191,12 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
     }
 
     public NeuralNetworkBuilder<E> withBiases(double[][] biases) {
-        this.biases = biases;
+        this.biases = Optional.ofNullable(biases);
         return this;
     }
 
     public NeuralNetworkBuilder<E> withWeights(double[][][] weights) {
-        this.weights = weights;
+        this.weights = Optional.ofNullable(weights);
         return this;
     }
     
@@ -216,18 +220,33 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
         return this;
     }
 
-    public NeuralNetworkBuilder<E> setParallelInputFetching(Boolean enabled){
-        this.parallelInputFetching = Optional.ofNullable(enabled);
+    public NeuralNetworkBuilder<E> enableParallelInputFetching(ExecutorService executorService){
+        this.inputFetchingService = Optional.ofNullable(executorService);
         return this;
     }
 
-    public NeuralNetworkBuilder<E> setParallelOutputHandling(Boolean enabled){
-        this.parallelOutputHandling = Optional.ofNullable(enabled);
+    public NeuralNetworkBuilder<E> disableParallelInputFetching(){
+        this.inputFetchingService = Optional.empty();
         return this;
     }
 
-    public NeuralNetworkBuilder<E> setParallelForwardPass(Boolean enabled){
-        this.parallelForwardPass = Optional.ofNullable(enabled);
+    public NeuralNetworkBuilder<E> enableParallelOutputHandling(ExecutorService executorService){
+        this.outputHandlingService = Optional.ofNullable(executorService);
+        return this;
+    }
+
+    public NeuralNetworkBuilder<E> disableParallelOutputHandling(){
+        this.outputHandlingService = Optional.empty();
+        return this;
+    }
+    
+    public NeuralNetworkBuilder<E> enableParallelForwardPass(ExecutorService executorService){
+        this.forwardPassService = Optional.ofNullable(executorService);
+        return this;
+    }
+
+    public NeuralNetworkBuilder<E> disableParallelForwardPass(){
+        this.forwardPassService = Optional.empty();
         return this;
     }
 
@@ -239,5 +258,127 @@ public class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> {
         Gson gson = CustomGsonFactory.getInstance();
         return gson.fromJson(json, classOfT);
     }
+
+    public static <T extends SimpleNeuralNetwork> NeuralNetworkBuilder<T> loadBinary(String filePath, NeuralNetworkBuilder<T> builder) throws FileNotFoundException, IOException, SecurityException, NullPointerException{
+        NetworkDeserializer deserializer = new NetworkDeserializer();
+        return deserializer.load(filePath, builder);
+    }
+
+
+	private class ParallelForwardPass implements Runnable{
+		final private ArrayList<Future<Double>> NODE_VALUES;
+        final private SimpleNeuralNetwork PARENT;
+        final private ExecutorService EXECUTOR_SERVICE;
+
+		public ParallelForwardPass(SimpleNeuralNetwork parent, ExecutorService executorService){
+            PARENT = Objects.requireNonNull(parent, "Network is null.");
+            EXECUTOR_SERVICE = Objects.requireNonNull(executorService, "ExecutorService is null.");
+			int initialSize = PARENT.getLayout().getHiddenLayers().stream()
+									.map(x -> x.getNodeCount())
+									.max((x, y) -> x.compareTo(y))
+									.get();
+			NODE_VALUES = new ArrayList<Future<Double>>(initialSize);
+		}
+
+		@Override
+		public void run() {
+			SimpleNeuralNetwork.applyLayerModifiers(PARENT.inputs, PARENT.inputNormalizer, PARENT.inputActivation);
+
+			double[] previousLayer = PARENT.inputs;
+
+			for(int layer = 0; layer < PARENT.hiddenLayers.length; layer++){
+                dotSequence(previousLayer, PARENT.weights[layer], PARENT.hiddenLayers[layer]);
+				NeuralNetworkTools.vectorSum(PARENT.hiddenLayers[layer], PARENT.biases[layer], PARENT.hiddenLayers[layer]);
+				SimpleNeuralNetwork.applyLayerModifiers(PARENT.hiddenLayers[layer], PARENT.hiddenNormalizers[layer], PARENT.hiddenActivations[layer]);
+				previousLayer = PARENT.hiddenLayers[layer];
+			}
+
+			dotSequence(previousLayer, PARENT.weights[PARENT.OUTPUT_LAYER], PARENT.outputs);
+			NeuralNetworkTools.vectorSum(PARENT.outputs, PARENT.biases[PARENT.OUTPUT_LAYER], PARENT.outputs);
+			SimpleNeuralNetwork.applyLayerModifiers(PARENT.outputs, PARENT.outputNormalizer, PARENT.outputActivation);
+		}
+
+        private void dotSequence(double[] vector1, double[][] crMatrix, double[] result){
+            NODE_VALUES.clear();
+
+            for (int i = 0; i < crMatrix.length; i++){
+                NODE_VALUES.add(EXECUTOR_SERVICE.submit(new DotProduct(vector1, crMatrix[i])));
+            }
+
+            for(int i = 0; i < NODE_VALUES.size(); i++)
+                try {
+                    result[i] = NODE_VALUES.get(i).get();
+                } catch (ExecutionException | CancellationException e) {
+                    continue;
+                } catch (InterruptedException e){
+                    break;
+                }
+        }
+
+        private class DotProduct implements Callable<Double>{
+            final double[] VECTOR_1, VECTOR_2;
+
+            public DotProduct(double[] v1, double[] v2){
+                VECTOR_1 = v1;
+                VECTOR_2 = v2;
+            }
+
+            @Override
+            public Double call() {
+                return NeuralNetworkTools.dotProduct(VECTOR_1, VECTOR_2);
+            }
+
+        } 
+
+	}
+
+	private class ParallelInputFetcher implements Runnable {
+        final private SimpleNeuralNetwork PARENT;
+		private List<Callable<?>> inputOperations;
+        final private ExecutorService EXECUTOR_SERVICE;
+
+        public ParallelInputFetcher(SimpleNeuralNetwork parent, ExecutorService executorService){
+            PARENT = Objects.requireNonNull(parent, "Network is null.");
+            EXECUTOR_SERVICE = Objects.requireNonNull(executorService, "ExecutorService is null.");
+            inputOperations = Arrays.asList(new Callable[PARENT.inputProviders.length]);
+
+            for(int i = 0; i < PARENT.inputProviders.length; i++) {
+				final int INDEX = i;
+				inputOperations.set(i, () -> { PARENT.inputs[INDEX] = PARENT.inputProviders[INDEX].orElse(PARENT.inputs[INDEX]); return null; });	
+			}
+		}
+
+		@Override
+		public void run() {
+			try {
+				EXECUTOR_SERVICE.invokeAll(inputOperations);
+			} catch (InterruptedException | RejectedExecutionException e) {}
+		}
+
+	}
+
+	private class ParallelOutputHandler implements Runnable{
+        final private SimpleNeuralNetwork PARENT;
+		private List<Callable<?>> outputOperations;
+        final private ExecutorService EXECUTOR_SERVICE;
+
+        public ParallelOutputHandler(SimpleNeuralNetwork parent, ExecutorService executorService){        
+            PARENT = Objects.requireNonNull(parent, "Network is null.");
+            EXECUTOR_SERVICE = Objects.requireNonNull(executorService, "ExecutorService is null.");
+            outputOperations = Arrays.asList(new Callable[PARENT.outputHandlers.length]);
+
+			for (int i = 0; i < PARENT.outputHandlers.length; i++) {
+                final int INDEX = i;
+				outputOperations.set(i, () -> { PARENT.outputHandlers[INDEX].handle(PARENT.outputs[INDEX]); return null; });	
+			}
+        }
+
+		@Override
+		public void run(){
+			try {
+				EXECUTOR_SERVICE.invokeAll(outputOperations);
+			} catch (InterruptedException | RejectedExecutionException e) {}
+		}
+	}
 
 }
