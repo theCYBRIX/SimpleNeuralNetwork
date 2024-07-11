@@ -12,6 +12,7 @@ import com.google.gson.JsonParseException;
 import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
 import com.mjsd.simpleneuralnetwork.Serialization.NetworkSerializer;
+import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
 
 public abstract class TestingEnvironment {
 
@@ -37,6 +38,26 @@ public abstract class TestingEnvironment {
         out.append("]");
 
         return out.toString();
+    }
+
+    public static String networkToString(MutableNeuralNetwork network){
+        StringBuilder builder = new StringBuilder();
+        
+        double[][][] weights = network.getWeights();
+        double[][] biases = network.getBiases();
+
+        for (int l = 0; l < weights.length; l++) {
+            builder.append("{Layer ").append(l).append("}\n");
+            for (int n = 0; n < weights[l].length; n++) {
+            builder.append("\t{Node ").append(n).append("}\n");
+                builder.append("\t\t{Weights} - [").append(weights[l][n][0]);
+                for (int w = 1; w < weights[l][n].length; w++) 
+                    builder.append(", ").append(weights[l][n][w]);
+                builder.append("]\n\t\t{Bias} - [").append(biases[l][n]).append("]\n");
+            }
+        }
+        
+        return builder.toString();
     }
 
     public static String formatTime(Duration duration){
@@ -69,7 +90,7 @@ public abstract class TestingEnvironment {
         }
         
         return NeuralNetworkBuilder.fromJson(buffer.toString(), networkType);
-    }    
+    }
 
     public static void saveNetwork(SimpleNeuralNetwork network, String path, FileType fileType) throws IOException{
         saveNetwork(network, path, fileType, null);

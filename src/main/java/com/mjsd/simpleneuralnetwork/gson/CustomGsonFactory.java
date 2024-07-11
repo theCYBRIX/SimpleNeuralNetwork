@@ -9,7 +9,6 @@ import com.mjsd.simpleneuralnetwork.NetworkLayout.NetworkLayer;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.ActivationFunction;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork.InputNormalizer;
 import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
 
 public final class CustomGsonFactory {
 
@@ -27,8 +26,7 @@ public final class CustomGsonFactory {
                     .registerTypeAdapter(NetworkLayer[].class, new ArrayAdapter<>(NetworkLayer.class, NetworkLayer[]::new))
                     .registerTypeAdapter(NetworkLayout.class, new NetworkLayoutAdapter())
                     .registerTypeAdapter(SimpleNeuralNetwork.class, new SimpleNeuralNetworkAdapter())
-                    .registerTypeAdapter(MutableNeuralNetwork.class, new MutableNeuralNetworkAdapter())
-                    .registerTypeAdapter(RankedNeuralNetwork.class, new RankedNeuralNetworkAdapter());
+                    .registerTypeAdapter(MutableNeuralNetwork.class, new MutableNeuralNetworkAdapter());
         return gsonBuilder.create();
     }
 

@@ -252,6 +252,16 @@ public class SimpleNeuralNetwork {
 		return outputs[index];
 	}
 
+	/**
+	 * @return a copy of the network's output array.
+	 */
+	public double[] getOutputs(){
+		return Arrays.copyOf(outputs, outputs.length);
+	}
+
+	/**
+	 * @return the network's output array in it's current state. This array will be modified by any calls to {@link #forwardPass()}, and any modification to it will be reflected in {@link #getOutput(int)} and {@link #getOutputs()}.
+	 */
 	public double[] getOutputLayer() {
 		return outputs;
 	}
@@ -307,7 +317,7 @@ public class SimpleNeuralNetwork {
 	***************************************************** Setters ******************************************************
 	*******************************************************************************************************************/
 
-	public void setInput(double[] values) throws NullPointerException, DimensionsMismatchException {
+	public void setInputs(double[] values) throws NullPointerException, DimensionsMismatchException {
 		if (Objects.requireNonNull(values, "Value array is null.").length != this.inputs.length)
 			throw new DimensionsMismatchException("Number of values (" + values.length + ") does not match number of input nodes ("
 					+ this.inputs.length + ").");

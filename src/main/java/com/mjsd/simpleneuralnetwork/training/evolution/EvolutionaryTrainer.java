@@ -2,6 +2,7 @@ package com.mjsd.simpleneuralnetwork.training.evolution;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -10,24 +11,37 @@ import java.util.function.Supplier;
 
 import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
 import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
+import com.mjsd.simpleneuralnetwork.training.ScoredNetwork;
 
-public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runnable {
+public class EvolutionaryTrainer<E extends MutableNeuralNetwork, T extends Comparable<T>> implements Runnable {
 
-	final private TrainingScenario<E> TRAINING_SCENARIO;
-	final private Population<E> POPULATION;
+	final private TrainingScenario<E, T> TRAINING_SCENARIO;
+	final private NetworkEvolutionManager<E, T> EVOLUTION_MANAGER;
 
 	private boolean running = false, keepAlive;
 
 	private Thread runningThread = null;
 
-	private ArrayList<Consumer<EvolutionaryTrainer<E>>> postGenerationCallbacks = new ArrayList<>();
+	private LinkedList<Consumer<EvolutionaryTrainer<E, T>>> postGenerationCallbacks = new LinkedList<>();
 
-	private int generation = 1;
+	private int generation = 1, numNetworks;
 
-	public EvolutionaryTrainer(Population<E> ecosystem, TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
+	private ArrayList<ScoredNetwork<E, T>> neuralNetworks, previousGeneration = new ArrayList<>();
+
+	private Comparator<ScoredNetwork<E, T>> comparator;
+
+	public EvolutionaryTrainer(int numNetworks, NetworkEvolutionManager<E, T> evolutionManager, TrainingScenario<E, T> trainingScenario) throws IllegalArgumentException, NullPointerException {
+		this(numNetworks, evolutionManager, trainingScenario, null);
+	}
+
+	public EvolutionaryTrainer(int numNetworks, NetworkEvolutionManager<E, T> evolutionManager, TrainingScenario<E, T> trainingScenario, Comparator<ScoredNetwork<E, T>> comparator) throws IllegalArgumentException, NullPointerException {
+		if(numNetworks <= 0)
+			throw new IllegalArgumentException("NumNetworks must be >= 1.");
 		this.TRAINING_SCENARIO = Objects.requireNonNull(trainingScenario);
-		this.POPULATION = Objects.requireNonNull(ecosystem);
+		this.EVOLUTION_MANAGER = Objects.requireNonNull(evolutionManager);
+		this.comparator = Objects.requireNonNullElse(comparator, (x, y) -> x.compareTo(y));
+		this.numNetworks = numNetworks;
+		this.neuralNetworks = new ArrayList<>(numNetworks);
 	}
 
 	@Override
@@ -37,22 +51,26 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 			keepAlive = true;
 			running = true;
 			runningThread = Thread.currentThread();
-			Collection<E> newGeneration;
-			POPULATION.ensureSufficientNetworks();
+			Collection<ScoredNetwork<E, T>> newGeneration;
+			
+			if (neuralNetworks.size() < numNetworks)
+				neuralNetworks.addAll(EVOLUTION_MANAGER.createRandomGeneration(numNetworks - neuralNetworks.size()));
+
 			while(keepAlive){
 
-				newGeneration = POPULATION.getMembers();
-
-				TRAINING_SCENARIO.setParticipants(newGeneration);
+				TRAINING_SCENARIO.setNetworks(neuralNetworks);
 				TRAINING_SCENARIO.run();
-				TRAINING_SCENARIO.evaluateParticipants();
+				TRAINING_SCENARIO.evaluateNetworks();
 
-				for(Consumer<EvolutionaryTrainer<E>> callback : postGenerationCallbacks)
+				for(Consumer<EvolutionaryTrainer<E, T>> callback : postGenerationCallbacks)
 					callback.accept(this);
 
 				if(Thread.interrupted()) break;
+				
+				newGeneration = EVOLUTION_MANAGER.createNewGeneration(neuralNetworks, numNetworks, comparator);
+				previousGeneration = neuralNetworks;
+				neuralNetworks = new ArrayList<>(newGeneration);
 
-				POPULATION.populateNewGeneration();
 				generation++;
 			}
 		} catch (Exception e){
@@ -64,11 +82,11 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 		}
 	}
 
-	public void attachCallback(Consumer<EvolutionaryTrainer<E>> callback){
+	public void attachCallback(Consumer<EvolutionaryTrainer<E, T>> callback){
 		postGenerationCallbacks.add(callback);
 	}
 
-	public boolean detachCallback(Consumer<EvolutionaryTrainer<E>> callback){
+	public boolean detachCallback(Consumer<EvolutionaryTrainer<E, T>> callback){
 		return postGenerationCallbacks.remove(callback);
 	}
 
@@ -76,26 +94,17 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 		postGenerationCallbacks.clear();
 	}
 
-	public void add(E network) throws NullPointerException{
-		POPULATION.add(network);
+	public void addNetwork(E network) throws NullPointerException{
+		neuralNetworks.add(new ScoredNetwork<E, T>(network));
+	}
+
+	public void addNetwork(ScoredNetwork<E, T> network) throws NullPointerException{
+		neuralNetworks.add(network);
 	}
 
 	public void addAll(Collection<? extends E> networks) throws NullPointerException{
-		POPULATION.addAll(networks);
+		networks.forEach(x -> neuralNetworks.add(new ScoredNetwork<E, T>(x)));
 	}
-
-	public Optional<Double> getBestScore(){
-		return POPULATION.getBestScore();
-	}
-	
-	public List<E> getLeaderBoard(){
-		return POPULATION.getLeaderBoard();
-	}
-	
-	public List<E> getLeaderBoard(Comparator<E> comparator){
-		return POPULATION.getLeaderBoard(comparator);
-	}
-	
 
 	final protected static <T extends MutableNeuralNetwork> T getRandomizedNetwork(Supplier<T> networkSupplier){
 		return NeuralNetworkTools.randomizeWeightsAndBiases(networkSupplier.get());
@@ -122,8 +131,8 @@ public class EvolutionaryTrainer<E extends RankedNeuralNetwork> implements Runna
 		this.generation = generation;
 	}
 	
-	public Population<E> getPopulation() {
-		return POPULATION;
+	public List<ScoredNetwork<E, T>> getPreviousGeneration() {
+		return previousGeneration;
 	}
 
 }

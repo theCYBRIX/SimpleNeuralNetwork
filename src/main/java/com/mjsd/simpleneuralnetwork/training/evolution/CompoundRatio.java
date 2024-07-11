@@ -103,7 +103,11 @@ public class CompoundRatio implements Iterable<Fraction>{
     }
 
     private static int[] stringToRatioTerms(String ratio) throws NumberFormatException, NullPointerException {
-        String[] termsStr = ratio.split(TERM_DELIMITER);
+        return stringToRatioTerms(ratio, TERM_DELIMITER);
+    }
+
+    private static int[] stringToRatioTerms(String ratio, String delimiter) throws NumberFormatException, NullPointerException {
+        String[] termsStr = ratio.split(delimiter);
         int[] terms = new int[termsStr.length];
         for(int i = 0; i < termsStr.length; i++)
             terms[i] = Integer.parseInt(termsStr[i]);

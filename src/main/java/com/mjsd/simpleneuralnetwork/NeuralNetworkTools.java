@@ -74,10 +74,18 @@ final public class NeuralNetworkTools {
 	******************************************* Weight and Bias Management *********************************************
 	*******************************************************************************************************************/
 
+	public static <T extends MutableNeuralNetwork> T copyWeightsAndBiases(Supplier<T> from, Supplier<T> to) throws DimensionsMismatchException, NullPointerException{
+		return copyWeightsAndBiases(from.get(), to.get());
+	}
+
 	public static <T extends MutableNeuralNetwork> T copyWeightsAndBiases(T from, T to) throws DimensionsMismatchException, NullPointerException{
 		requireSameDimensions(from, to);
 		copyWeightsAndBiasesUnchecked(from, to);
 		return to;
+	}
+
+	protected static <T extends MutableNeuralNetwork> void copyWeightsAndBiasesUnchecked(Supplier<T> from, Supplier<T> to) throws NullPointerException{
+		copyWeightsAndBiasesUnchecked(from.get(), to.get());
 	}
 
 	protected static void copyWeightsAndBiasesUnchecked(MutableNeuralNetwork from, MutableNeuralNetwork to) throws NullPointerException{
@@ -164,82 +172,27 @@ final public class NeuralNetworkTools {
 		return network;
 	}
 
-	/**
-	 * Crosses two networks weights at a random point within each layer.
-	 * 
-	 * @param parent1
-	 * @param parent2
-	 * @return An array of length 2 containing two children, each with a mixture of
-	 *         features from either parent.
-	 */
-	public static <E extends MutableNeuralNetwork> E layerwiseCrossover(E parent1, E parent2, Supplier<E> child) throws LayoutMismatchException, NullPointerException {
-		E childNetwork = child.get();
-
-		requireSameLayout(parent1, parent2, childNetwork);
-
-		List<NetworkLayer> hiddenLayers = parent1.getLayout().getHiddenLayers();
-
-		int[] splitPoints = new int[hiddenLayers.size()];
-
-		/**
-		* A random split-point in range [0.25, 0.75) or, [25%, 75%) of each layer.
-		* If the value is 0.25, child1 receives 25% of parent1, and 75% of parent two; child2 receives the opposite.
-		*/
-		double splitFraction;
-
-		for(int layer = 0; layer < splitPoints.length; layer++){
-			splitFraction = 0.25 + 0.5 * Math.random();
-			splitPoints[layer] = (int)Math.round(hiddenLayers.get(layer).getNodeCount() * splitFraction);
-		}
-		
-		return crossover(parent1, parent2, childNetwork, splitPoints);
+	public static <E extends MutableNeuralNetwork> E crossover(Supplier<E> parent1, Supplier<E> parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossover(parent1.get(), parent2.get(), child);
 	}
 
-	/**
-	 * Crosses two networks weights at a random point within each layer.
-	 * 
-	 * @param parent1
-	 * @param parent2
-	 * @return An array of length 2 containing two children, each with a mixture of
-	 *         features from either parent.
-	 */
-	public static <E extends MutableNeuralNetwork> E singlePointCrossover(E parent1, E parent2, Supplier<E> child) throws LayoutMismatchException, NullPointerException {
-		E childNetwork = child.get();
-
-		requireSameLayout(parent1, parent2, childNetwork);
-
-		List<NetworkLayer> hiddenLayers = parent1.getLayout().getHiddenLayers();
-
-		int[] splitPoints = new int[hiddenLayers.size()];
-
-		/**
-		* A random split-point in range [0.25, 0.75) or, [25%, 75%) of each layer.
-		* If the value is 0.25, child1 receives 25% of parent1, and 75% of parent two; child2 receives the opposite.
-		*/
-		double splitFraction = 0.25 + 0.5 * Math.random();
-
-		for(int layer = 0; layer < splitPoints.length; layer++)
-			splitPoints[layer] = (int)Math.round(hiddenLayers.get(layer).getNodeCount() * splitFraction);
-		
-		return crossover(parent1, parent2, childNetwork, splitPoints);
+	public static <E extends MutableNeuralNetwork> E crossover(E parent1, E parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossover(parent1, parent2, child, 0.5f);
 	}
+	
 
-	private static <E extends MutableNeuralNetwork> E crossover(E parent1, E parent2, E child, int[] splitPoints) throws NullPointerException{
+	public static <E extends MutableNeuralNetwork> E crossover(E parent1, E parent2, E child, float lerpFactor) throws LayoutMismatchException, NullPointerException{
+		NeuralNetworkTools.requireSameDimensions(parent1, parent2, child);
+
+		double[][][] weights1 = parent1.weights, weights2 = parent2.weights, childWeights = child.weights;
 
 		try {
-			int node;
-			List<NetworkLayer> hiddenLayers = child.getLayout().getHiddenLayers();
-			for (int layer = 0; layer < hiddenLayers.size(); layer++) {
-				for (node = 0; node < splitPoints[layer]; node++) {
-					child.setWeights(layer, node, parent1.getWeights(layer, node));
-					child.setBias(layer, node, parent1.getBias(layer, node));
+			for(int layer = 0; layer < weights1.length; layer++)
+				for(int node = 0; node < weights1[layer].length; node++){
+					double[] w1 = weights1[layer][node], w2 = weights2[layer][node], c = childWeights[layer][node];
+					for(int weight = 0; weight < w1.length; weight++)
+						c[weight] = lerp(w1[weight], w2[weight], lerpFactor);
 				}
-				int nodesInLayer  = hiddenLayers.get(layer).getNodeCount();
-				for (; node < nodesInLayer; node++) {
-					child.setWeights(layer, node, parent2.getWeights(layer, node));
-					child.setBias(layer, node, parent2.getBias(layer, node));
-				}
-			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -316,7 +269,7 @@ final public class NeuralNetworkTools {
 		HashSet<E> children = new HashSet<>(numChildren);
 
 		while(children.size() < numChildren)
-			children.add(NeuralNetworkTools.singlePointCrossover(parent1, parent2, childSource));
+			children.add(NeuralNetworkTools.crossover(parent1, parent2, childSource.get(), (float)Math.random()));
 
 		return children;
 	}
@@ -512,6 +465,10 @@ final public class NeuralNetworkTools {
 		}
 
 		return randoms;
+	}
+
+	final protected static double lerp(double min, double max, double frac){
+		return min + frac * (max - min);
 	}
 
 	final public static double[][] deepCopy(double[][] original){

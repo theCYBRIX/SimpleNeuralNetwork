@@ -30,7 +30,7 @@ public class JsonParsing extends TestingEnvironment {
             inputValues[i] = Math.random();
 
         NeuralNetworkTools.randomizeWeightsAndBiases(originalNetwork);
-        originalNetwork.setInput(inputValues);
+        originalNetwork.setInputs(inputValues);
         originalNetwork.forwardPass();
 
 

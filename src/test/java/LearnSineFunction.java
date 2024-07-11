@@ -7,21 +7,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
@@ -29,28 +24,28 @@ import org.knowm.xchart.XYChartBuilder;
 
 import com.google.gson.JsonParseException;
 import com.mjsd.simpleneuralnetwork.ActivationFunctions;
-import com.mjsd.simpleneuralnetwork.LossFunctions;
 import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
 import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.SimpleNeuralNetworkBuilder;
-import com.mjsd.simpleneuralnetwork.training.evolution.TrainingScenario;
-import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetworkBuilder;
+import com.mjsd.simpleneuralnetwork.training.evolution.ValueMappingTrainer;
+import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
+import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetworkBuilder;
+import com.mjsd.simpleneuralnetwork.training.ScoredNetwork;
 import com.mjsd.simpleneuralnetwork.training.evolution.SimpleEvolutionaryTrainer;
 
 final public class LearnSineFunction extends TestingEnvironment {
     
     //Settings
+    private static boolean continueTraining = true;
     private static float fpsLimit = 0.0f;
     private static String savePath = "SinNetwork";
     private static FileType saveType = FileType.JSON;
-    private static int networksPerGeneration = 10;
+    private static int networksPerGeneration = 100;
 
     private static int numSamples = 128;
     private static float acceptableError = 0.000005f;
     private static double[] limits = new double[]{0, 2 * Math.PI};
 
-    private static NeuralNetworkBuilder<RankedNeuralNetwork> layout = new RankedNeuralNetworkBuilder()
+    private static NeuralNetworkBuilder<MutableNeuralNetwork> layout = new MutableNeuralNetworkBuilder()
                                                                       .withInputLayer(1)
                                                                       .withOutputLayer(1)
                                                                       .addHiddenLayers(2, 4, ActivationFunctions.TANH);
@@ -68,12 +63,15 @@ final public class LearnSineFunction extends TestingEnvironment {
     final private DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("h':'mm a");
     
     private Thread mainThread, trainingThread;
-    private SimpleEvolutionaryTrainer<RankedNeuralNetwork> trainer;
+    private SimpleEvolutionaryTrainer<MutableNeuralNetwork, Double> trainer;
 
     private Instant startTime, endTime;
     private Optional<Double> bestScore = Optional.empty();
+    private Optional<MutableNeuralNetwork> bestNetwork = Optional.empty();
 
-    final double[] x, y, error;
+    final double[][] inputs, outputs;
+    final double[] x, y;
+    final double[] error;
 
     public static void main(String[] args) {
         LearnSineFunction learnSineFunction = new LearnSineFunction(System.console());
@@ -99,9 +97,20 @@ final public class LearnSineFunction extends TestingEnvironment {
         chartWrapper = new SwingWrapper<>(chart);
         chartWrapper.displayChart();
 
-        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, (a, b) -> 0 - a.compareTo(b), new ValueMappingTrainer(x, y));
-        trainer.getPopulation().setParallel(true);
+        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, new ValueMappingTrainer<>(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()){ public void run(){ super.run(); try { Thread.sleep(frameTime); } catch (Exception e) {}}}, (a, b) -> 0 - a.compareTo(b));
+        trainer.attachCallback(x -> updateScoreHistory());
 
+        if(continueTraining){
+            try {
+                MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder(loadNetworkFromFile(savePath, saveType));
+                for (int i = 0; i < networksPerGeneration; i++)
+                    trainer.addNetwork(builder.build());
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+        
         trainingThread = new Thread(trainer);
         trainingThread.start();
 
@@ -130,8 +139,8 @@ final public class LearnSineFunction extends TestingEnvironment {
 
         StringBuilder results = new StringBuilder();
 
-        Optional<Double> bestScore = trainer.getPopulation().getBestScore();
-        SimpleNeuralNetwork bestNetwork = getBestNetwork();
+        Optional<Double> bestScore = Collections.min(trainer.getPreviousGeneration()).getScore();
+        SimpleNeuralNetwork bestNetwork = getBestNetwork().get();
 
         results.append((bestScore.get() <= acceptableError) ? "Network reached desired proficiency in " : "Training stopped after ")
                .append(formatTime(Duration.between(startTime, endTime)))
@@ -141,13 +150,13 @@ final public class LearnSineFunction extends TestingEnvironment {
                .append(trainer.getGeneration())
                .append("\n\n");
 
-        for(int i = 0; i < x.length; i++){
-            bestNetwork.setInput(0, x[i]);
+        for(int i = 0; i < inputs.length; i++){
+            bestNetwork.setInput(0, inputs[i][0]);
             bestNetwork.forwardPass();
             results.append(", ")
-                   .append(DECIMAL_FORMAT.format(x[i]))
+                   .append(DECIMAL_FORMAT.format(inputs[i][0]))
                    .append(", ")
-                   .append(DECIMAL_FORMAT.format(y[i]))
+                   .append(DECIMAL_FORMAT.format(outputs[i][0]))
                    .append(", ")
                    .append(DECIMAL_FORMAT.format(bestNetwork.getOutput(0)));
         }
@@ -161,21 +170,38 @@ final public class LearnSineFunction extends TestingEnvironment {
         double range = limits[1] - limits[0];
         x = new double[numSamples]; 
         y = new double[numSamples];
+        inputs = new double[numSamples][1]; 
+        outputs = new double[numSamples][1];
         error = new double[numSamples];
 
         double stepSize = range / (double)numSamples;
         for(int i = 0; i < numSamples; i++){
             x[i] = limits[0] + stepSize * i;
             y[i] = Math.sin(x[i]);
+            inputs[i][0] = x[i];
+            outputs[i][0] = y[i];
         }
     }
 
-    private void setBestScore(Double bestScore) {
-        this.bestScore = Optional.ofNullable(bestScore);
+    private void updateScoreHistory(){
+        List<ScoredNetwork<MutableNeuralNetwork, Double>> prevGen = trainer.getPreviousGeneration();
+        if(prevGen.isEmpty()) return;
+        ScoredNetwork<MutableNeuralNetwork, Double> bestScoredNetwork = prevGen.parallelStream().filter(x -> x.getScore().isPresent()).min((x, y) -> x.compareTo(y)).orElse(null);
+        if(bestScoredNetwork == null) return;
+        Optional<Double> newBestScore = bestScoredNetwork.getScore();
+        if(newBestScore.isEmpty()) return;
+        if(bestScore.isEmpty() || newBestScore.get() < bestScore.get()){
+            bestNetwork = Optional.ofNullable(bestScoredNetwork.get().copy());
+            bestScore = newBestScore;
+        }
     }
 
-    private SimpleNeuralNetwork getBestNetwork(){
-        return trainer.getPopulation().getLeaderBoard((a, b) -> a.compareTo(b)).get(0);
+    private Optional<Double> getBestScore() {
+        return bestScore;
+    }
+
+    private Optional<MutableNeuralNetwork> getBestNetwork(){
+        return bestNetwork;
     }
 
     private String getStatus(){
@@ -195,15 +221,18 @@ final public class LearnSineFunction extends TestingEnvironment {
     }
 
     static void printNetworkPredictions(String networkPath, FileType fileType, double[] x, double[] y) throws FileNotFoundException, IOException, JsonParseException{
+        printNetworkPredictions(loadNetworkFromFile(networkPath, fileType), x, y);
+    }
+
+    static MutableNeuralNetwork loadNetworkFromFile(String networkPath, FileType fileType) throws FileNotFoundException, IOException, JsonParseException{
         switch (fileType) {
             case JSON:
-                printNetworkPredictions(TestingEnvironment.networkFromJson(networkPath, SimpleNeuralNetwork.class), x, y);
-                break;
+                return TestingEnvironment.networkFromJson(networkPath, MutableNeuralNetwork.class);
             case SNN:
-                printNetworkPredictions(NeuralNetworkBuilder.loadBinary(networkPath + ".snn", new SimpleNeuralNetworkBuilder()).build(), x, y);
-                break;
+                return NeuralNetworkBuilder.loadBinary(networkPath + ".snn", new MutableNeuralNetworkBuilder()).build();
+            default:
+                throw new FileNotFoundException();
         }
-        
     }
 
     static void printNetworkPredictions(SimpleNeuralNetwork network, double[] x, double[] y){
@@ -260,7 +289,8 @@ final public class LearnSineFunction extends TestingEnvironment {
                             break;
                         }
                     try {
-                        saveNetwork(getBestNetwork(), savePath, fileType);
+                        MutableNeuralNetwork bestNetwork = getBestNetwork().orElse(null);
+                        if(bestNetwork != null) saveNetwork(bestNetwork, savePath, fileType);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -279,7 +309,7 @@ final public class LearnSineFunction extends TestingEnvironment {
                     return;
 
                 case "view", "print":
-                    println(getBestNetwork().copy().toJson());
+                    println(getBestNetwork().get().copy().toJson());
                     return;
 
             
@@ -295,15 +325,18 @@ final public class LearnSineFunction extends TestingEnvironment {
 
         @Override
         public void run() {
-            if(bestScore.isEmpty()) return;
+            if(getBestScore().isEmpty()) return;
+
+            double currentBestScore = getBestScore().get();
 
             if(previousBestScore.isPresent()){
-                if(bestScore.get() >= previousBestScore.get()) return;
+                if(currentBestScore >= previousBestScore.get()) return;
             }
 
-            List<RankedNeuralNetwork> leaderBoard = trainer.getLeaderBoard();
-
-            RankedNeuralNetwork bestNetwork = leaderBoard.get(leaderBoard.size() - 1).copy();
+            
+            MutableNeuralNetwork bestNetwork = getBestNetwork().orElse(null);
+            if(bestNetwork == null) return;
+            
             double[] points = Arrays.stream(x)
                     .sequential()
                     .map(x -> {
@@ -320,17 +353,15 @@ final public class LearnSineFunction extends TestingEnvironment {
     }
 
     private class StatusUpdater implements Runnable {
-        final private Consumer<Double> UPDATE_SCORE = x -> setBestScore(x);
+        private Optional<Double> previousBestScore = Optional.empty();
 
         public synchronized void run(){
-            Optional<Double> currentBestScore = trainer.getPopulation().getBestScore();
+            if(getBestScore().isEmpty()) return;
+            double currentBestScore = getBestScore().get();
 
-            if(currentBestScore.isEmpty()) return;
+            if(!Double.isFinite(currentBestScore)) return;
 
-            double leastError = currentBestScore.get();
-            if(!Double.isFinite(leastError)) return;
-
-            if(leastError <= acceptableError){
+            if(currentBestScore <= acceptableError){
                 if(trainingThread.isAlive()){
                     trainer.stop();
                     synchronized(SYNCH_OBJECT){
@@ -339,90 +370,11 @@ final public class LearnSineFunction extends TestingEnvironment {
                 }
             }
 
-            if(bestScore.isEmpty() || (bestScore.get() > leastError)){
-                currentBestScore.ifPresent(UPDATE_SCORE);
+            if(previousBestScore.isEmpty() || (previousBestScore.get() > currentBestScore)){
                 println(getStatus());
+                previousBestScore = Optional.of(currentBestScore);
             }
         }
     }
-
-    private static class ValueMappingTrainer implements TrainingScenario<RankedNeuralNetwork> {
-        private ExecutorService executorService = Executors.newCachedThreadPool();
-        private ArrayList<RankedNeuralNetwork> networks = new ArrayList<>();
-        private ArrayList<Callable<?>> tasks = new ArrayList<>();
-        private double[][] predictions;
-        private final double[] x, y;
-
-        // static double[] durations = new double[100];
-        // static int durationIndex = 0;
-
-        public ValueMappingTrainer(double[] inputs, double[] outputs) throws IllegalArgumentException {
-            if(inputs.length != outputs.length)
-                throw new IllegalArgumentException("Input and output arrays are differing lengths. (" + inputs.length + " != " + outputs.length + ")");
-
-            x = inputs;
-            y = outputs;
-        }
-
-        @Override
-        public void run() {
-            // long start = System.nanoTime();
-            predictions = new double[networks.size()][x.length];
-            tasks.clear();
-
-            for(int networkIndex = 0; networkIndex < networks.size(); networkIndex++){
-                final RankedNeuralNetwork NETWORK = networks.get(networkIndex);
-                final double[] PREDICTIONS = predictions[networkIndex];
-                tasks.add(() -> { mapValues(NETWORK, x, PREDICTIONS); return null; });
-            }
-
-            try {
-                executorService.invokeAll(tasks);
-            } catch (RejectedExecutionException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e){}
-
-            // durations[durationIndex++] = System.nanoTime() - start;
-            // if (durationIndex == durations.length){
-            //     println(((Arrays.stream(durations).sum() / durations.length) / 1000000) + "ms" );
-            //     durationIndex = 0;
-            // }
-
-            if(frameTime > 0)
-                try {
-                    Thread.sleep(frameTime);
-                } catch (Exception e) {}
-        }
-
-
-        private void mapValues(SimpleNeuralNetwork network, double[] inputs, double[] outputs){
-            for(int i = 0; i < x.length; i++){
-                network.setInput(0, x[i]);
-                network.forwardPass();
-                outputs[i] = network.getOutput(0);
-            }
-        }
-
-        @Override
-        public void setParticipants(Collection<RankedNeuralNetwork> c) {
-            networks.clear();
-            networks.addAll(c);
-        }
-
-        @Override
-        public void evaluateParticipants() {
-            for(int networkIndex = 0; networkIndex < predictions.length; networkIndex++){
-                RankedNeuralNetwork network = networks.get(networkIndex);
-                double error = LossFunctions.meanSquaredError(predictions[networkIndex], y);
-
-                if(!Double.isFinite(error)){
-                    println("TRAINER ENCOUNTERED AN ERROR.\nInvalid totalError: " + error + "\n\nNetwork Layers:\n" + arrayToString(predictions[networkIndex]) + "\n\nOffending Network:\n" + network.toString() + "\n\nAs JSON:\n" + network.toJson() + "\n");
-                    System.exit(1);
-                }
-                
-                network.setScore(Double.valueOf(error));
-            }
-        }
-        
-    }
+    
 }

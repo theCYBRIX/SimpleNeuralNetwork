@@ -6,18 +6,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import com.mjsd.simpleneuralnetwork.training.RankedNeuralNetwork;
-
-public class TrainingScoreLogger implements Consumer<EvolutionaryTrainer<? extends RankedNeuralNetwork>>{
+public class TrainingScoreLogger<T extends Comparable<T>> implements Consumer<EvolutionaryTrainer<?, T>>{
 
 	final private static byte DEF_SCORE_HISTORY_SIZE = 100;
 	private int scoreHistorySize = DEF_SCORE_HISTORY_SIZE;
     private int gensWithoutImprovement = 0;
 
-	final private LinkedList<Double> BEST_SCORE_HISTORY = new LinkedList<Double>();
-    final private List<Double> READ_ONLY_VIEW = Collections.unmodifiableList(BEST_SCORE_HISTORY);
+	final private LinkedList<T> BEST_SCORE_HISTORY = new LinkedList<T>();
+    final private List<T> READ_ONLY_VIEW = Collections.unmodifiableList(BEST_SCORE_HISTORY);
 
-	private void updateScoreHistory(Optional<Double> bestScore) throws NullPointerException{
+	private void updateScoreHistory(Optional<T> bestScore) throws NullPointerException{
 
 		if(bestScore.isPresent()){
 			if(BEST_SCORE_HISTORY.isEmpty()){
@@ -25,10 +23,10 @@ public class TrainingScoreLogger implements Consumer<EvolutionaryTrainer<? exten
 				BEST_SCORE_HISTORY.add(bestScore.get());
 				
 			} else {
-				Double previousBest = BEST_SCORE_HISTORY.getLast();
-				Double currentBest = bestScore.get();
+				T previousBest = BEST_SCORE_HISTORY.getLast();
+				T currentBest = bestScore.get();
 				BEST_SCORE_HISTORY.add(currentBest);
-				if(previousBest < currentBest)
+				if(previousBest.compareTo(currentBest) < 0)
 					gensWithoutImprovement = 0;
 				else
 					gensWithoutImprovement++;
@@ -49,11 +47,11 @@ public class TrainingScoreLogger implements Consumer<EvolutionaryTrainer<? exten
 	}
 
     @Override
-    public void accept(EvolutionaryTrainer<? extends RankedNeuralNetwork> trainer) {
-        updateScoreHistory(trainer.getPopulation().getBestScore());
+    public void accept(EvolutionaryTrainer<?, T> trainer) {
+        updateScoreHistory(Collections.max(trainer.getPreviousGeneration()).getScore());
     }
  
-	public List<Double> getScoreHistory(){
+	public List<T> getScoreHistory(){
 		return READ_ONLY_VIEW;
 	}
 

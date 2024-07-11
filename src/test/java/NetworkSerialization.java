@@ -39,6 +39,13 @@ public class NetworkSerialization extends TestingEnvironment {
         println("\n\nFrom file:\n" + deserializedNetwork.getLayout());
 
         println("\nShould be true: " + originalNetwork.equals(deserializedNetwork));
+
+        
+        println(networkToString(originalNetwork));
+        println("\n");
+        println(networkToString(deserializedNetwork));
     }
+
+    
     
 }
