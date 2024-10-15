@@ -9,9 +9,11 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -22,22 +24,23 @@ import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
+import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ValueMappingTrainer;
+import com.github.thecybrix.simpleneuralnetwork.training.simple.SimpleEvolutionaryTrainer;
 import com.google.gson.JsonParseException;
-import com.mjsd.simpleneuralnetwork.ActivationFunctions;
-import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
-import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.evolution.ValueMappingTrainer;
-import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetworkBuilder;
-import com.mjsd.simpleneuralnetwork.training.ScoredNetwork;
-import com.mjsd.simpleneuralnetwork.training.evolution.SimpleEvolutionaryTrainer;
 
 final public class LearnSineFunction extends TestingEnvironment {
     
     //Settings
-    private static boolean continueTraining = true;
+    private static boolean continueTraining = false;
     private static float fpsLimit = 0.0f;
-    private static String savePath = "SinNetwork";
+    private static String savePath = "TestSaves\\SinNetwork";
     private static FileType saveType = FileType.JSON;
     private static int networksPerGeneration = 100;
 
@@ -63,10 +66,10 @@ final public class LearnSineFunction extends TestingEnvironment {
     final private DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("h':'mm a");
     
     private Thread mainThread, trainingThread;
-    private SimpleEvolutionaryTrainer<MutableNeuralNetwork, Double> trainer;
+    private SimpleEvolutionaryTrainer<MutableNeuralNetwork> trainer;
 
     private Instant startTime, endTime;
-    private Optional<Double> bestScore = Optional.empty();
+    private OptionalDouble bestScore = OptionalDouble.empty();
     private Optional<MutableNeuralNetwork> bestNetwork = Optional.empty();
 
     final double[][] inputs, outputs;
@@ -97,8 +100,9 @@ final public class LearnSineFunction extends TestingEnvironment {
         chartWrapper = new SwingWrapper<>(chart);
         chartWrapper.displayChart();
 
-        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, new ValueMappingTrainer<>(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()){ public void run(){ super.run(); try { Thread.sleep(frameTime); } catch (Exception e) {}}}, (a, b) -> 0 - a.compareTo(b));
+        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, ParentSelector.eliteSelection(Comparator.reverseOrder()), ValueMappingTrainer.of(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()), (a, b) -> 0 - a.compareTo(b));
         trainer.attachCallback(x -> updateScoreHistory());
+        if(fpsLimit > 0) trainer.attachCallback(x -> { try { Thread.sleep(frameTime); } catch (Exception e) {}; });
 
         if(continueTraining){
             try {
@@ -139,13 +143,13 @@ final public class LearnSineFunction extends TestingEnvironment {
 
         StringBuilder results = new StringBuilder();
 
-        Optional<Double> bestScore = Collections.min(trainer.getPreviousGeneration()).getScore();
+        OptionalDouble bestScore = Collections.min(trainer.getPreviousGeneration()).getScore();
         SimpleNeuralNetwork bestNetwork = getBestNetwork().get();
 
-        results.append((bestScore.get() <= acceptableError) ? "Network reached desired proficiency in " : "Training stopped after ")
+        results.append((bestScore.getAsDouble() <= acceptableError) ? "Network reached desired proficiency in " : "Training stopped after ")
                .append(formatTime(Duration.between(startTime, endTime)))
                .append(".\nAverage error: ")
-               .append((bestScore.isPresent() ? DECIMAL_FORMAT.format(bestScore.get()) : "< " + acceptableError))
+               .append((bestScore.isPresent() ? DECIMAL_FORMAT.format(bestScore.getAsDouble()) : "< " + acceptableError))
                .append("\nNetwork Generation: ")
                .append(trainer.getGeneration())
                .append("\n\n");
@@ -184,19 +188,19 @@ final public class LearnSineFunction extends TestingEnvironment {
     }
 
     private void updateScoreHistory(){
-        List<ScoredNetwork<MutableNeuralNetwork, Double>> prevGen = trainer.getPreviousGeneration();
+        List<ScoredNetwork<MutableNeuralNetwork>> prevGen = trainer.getPreviousGeneration();
         if(prevGen.isEmpty()) return;
-        ScoredNetwork<MutableNeuralNetwork, Double> bestScoredNetwork = prevGen.parallelStream().filter(x -> x.getScore().isPresent()).min((x, y) -> x.compareTo(y)).orElse(null);
+        ScoredNetwork<MutableNeuralNetwork> bestScoredNetwork = prevGen.parallelStream().filter(x -> x.getScore().isPresent()).min((x, y) -> x.compareTo(y)).orElse(null);
         if(bestScoredNetwork == null) return;
-        Optional<Double> newBestScore = bestScoredNetwork.getScore();
+        OptionalDouble newBestScore = bestScoredNetwork.getScore();
         if(newBestScore.isEmpty()) return;
-        if(bestScore.isEmpty() || newBestScore.get() < bestScore.get()){
+        if(bestScore.isEmpty() || newBestScore.getAsDouble() < bestScore.getAsDouble()){
             bestNetwork = Optional.ofNullable(bestScoredNetwork.get().copy());
             bestScore = newBestScore;
         }
     }
 
-    private Optional<Double> getBestScore() {
+    private OptionalDouble getBestScore() {
         return bestScore;
     }
 
@@ -211,7 +215,7 @@ final public class LearnSineFunction extends TestingEnvironment {
               .append("\n\tTime elapsed: ").append(formatTime(Duration.between(startTime, Instant.now())))
               .append("\n\tTrainer status: ").append(trainingThread.isAlive() ? (trainingThread.isInterrupted() ? "Interrupted" : "Active") : "Dead")
               .append("\n\tNetwork Generation: ").append(trainer.getGeneration())
-              .append("\n\tNetwork Error: ").append(bestScore.isPresent() ? DECIMAL_FORMAT.format(bestScore.get()) : "N/A")
+              .append("\n\tNetwork Error: ").append(bestScore.isPresent() ? DECIMAL_FORMAT.format(bestScore.getAsDouble()) : "N/A")
               .append("\n");
             
         } catch (Exception e) {
@@ -327,7 +331,7 @@ final public class LearnSineFunction extends TestingEnvironment {
         public void run() {
             if(getBestScore().isEmpty()) return;
 
-            double currentBestScore = getBestScore().get();
+            double currentBestScore = getBestScore().getAsDouble();
 
             if(previousBestScore.isPresent()){
                 if(currentBestScore >= previousBestScore.get()) return;
@@ -357,7 +361,7 @@ final public class LearnSineFunction extends TestingEnvironment {
 
         public synchronized void run(){
             if(getBestScore().isEmpty()) return;
-            double currentBestScore = getBestScore().get();
+            double currentBestScore = getBestScore().getAsDouble();
 
             if(!Double.isFinite(currentBestScore)) return;
 

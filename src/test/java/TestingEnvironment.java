@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.function.Consumer;
 
+import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.serialization.binary.NetworkSerializer;
 import com.google.gson.JsonParseException;
-import com.mjsd.simpleneuralnetwork.NeuralNetworkBuilder;
-import com.mjsd.simpleneuralnetwork.SimpleNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.Serialization.NetworkSerializer;
-import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
 
 public abstract class TestingEnvironment {
 
@@ -110,21 +110,10 @@ public abstract class TestingEnvironment {
     }
 
     public static void saveNetworkJson(SimpleNeuralNetwork network, String path, Consumer<Exception> onException){
-        onException = (onException == null) ? x -> x.printStackTrace() : onException;
 
         if(!path.endsWith(".json")) path += ".json";
 
-        File saveFile = new File(path);
-        try {
-            if(!saveFile.exists()) saveFile.createNewFile();
-
-            try(BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile))) {
-                writer.write(network.toJson());
-            }
-                
-        } catch (IOException e) {
-            onException.accept(e);
-        }
+        saveToFile(path, network.toJson(), onException);
     }
 
     public static void saveNetworkSNN(SimpleNeuralNetwork network, String path, Consumer<Exception> onException){
@@ -134,6 +123,24 @@ public abstract class TestingEnvironment {
             serializer.save(network, path, true);
         } catch (Exception e) {
             onException.accept(e);
+        }
+    }
+
+    public static void saveToFile(String filePath, String data, Consumer<Exception> onException) throws NullPointerException{
+        if(onException == null) onException = x -> x.printStackTrace();
+        try {
+            saveToFile(filePath, data);
+        } catch (Exception e) {
+            onException.accept(e);
+        }
+    }
+
+    public static void saveToFile(String path, String data) throws IOException, SecurityException, NullPointerException {
+        File saveFile = new File(path);
+        if(!saveFile.exists()) saveFile.createNewFile();
+
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile))) {
+            writer.write(data);
         }
     }
 }

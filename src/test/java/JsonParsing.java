@@ -1,17 +1,19 @@
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
+import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
+import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayoutBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
+import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
 import com.google.gson.Gson;
-import com.mjsd.simpleneuralnetwork.ActivationFunctions;
-import com.mjsd.simpleneuralnetwork.NetworkLayout;
-import com.mjsd.simpleneuralnetwork.NetworkLayoutBuilder;
-import com.mjsd.simpleneuralnetwork.NeuralNetworkTools;
-import com.mjsd.simpleneuralnetwork.gson.CustomGsonFactory;
-import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetwork;
-import com.mjsd.simpleneuralnetwork.training.MutableNeuralNetworkBuilder;
 
 public class JsonParsing extends TestingEnvironment {
     final public static Gson GSON = CustomGsonFactory.getInstance();
 
     public static void main(String... args){
         MutableNeuralNetwork serializedNetwork, originalNetwork;
+
+
         String asJson;
 
         NetworkLayout layout = new NetworkLayoutBuilder()
@@ -20,7 +22,9 @@ public class JsonParsing extends TestingEnvironment {
                                .addLayers(2, 4, ActivationFunctions.TANH)
                                .build();
 
-        originalNetwork = new MutableNeuralNetworkBuilder(layout).build();
+        MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder(layout);
+
+        originalNetwork = builder.build();
 
 
         asJson = originalNetwork.toJson(GSON);

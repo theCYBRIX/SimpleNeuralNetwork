@@ -1,7 +1,11 @@
 #Ignore VS Code Project settings 
 .vscode/
 
-#Idnore test save file
-SinNetwork.json
-SinNetwork.snn
-test.snn
+#Ignore test save files
+TestSaves/
+
+#Ignore builds
+target/
+
+#Ignore test .jar files
+SimpleNeuralNetwork.jar
