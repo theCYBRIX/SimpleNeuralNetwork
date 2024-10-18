@@ -11,11 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunction;
+import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout.NetworkLayer;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 
 public class NetworkSerializer extends BinaryStorageManager {
     private Map<ActivationFunction, String> activationFunctionNames = new HashMap<>(ACTIVATION_FUNCTION_NAMES);
@@ -48,7 +48,7 @@ public class NetworkSerializer extends BinaryStorageManager {
             try(DataOutputStream fileWriter = new DataOutputStream(new FileOutputStream(saveFile, false))){
                 double[][][] weights = network.getWeights();
                 double[][] biases = network.getBiases();
-                NetworkLayout layout = network.getLayout();
+                NetworkLayout layout = NetworkLayout.of(network);
                 ArrayList<NetworkLayer> networkLayers = new ArrayList<>(layout.getHiddenLayers().size() + 2);
 
                 networkLayers.add(layout.getInputLayer());

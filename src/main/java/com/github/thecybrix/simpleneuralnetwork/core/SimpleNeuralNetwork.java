@@ -10,7 +10,6 @@ import com.google.gson.annotations.JsonAdapter;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +18,6 @@ import java.util.Objects;
 public class SimpleNeuralNetwork {
 
 	final protected int OUTPUT_LAYER;
-	final protected NetworkLayout LAYOUT;
 
 	protected double[][][] weights;
 	protected double[][] biases;
@@ -36,34 +34,42 @@ public class SimpleNeuralNetwork {
 	protected ActivationFunction outputActivation;
 	protected InputNormalizer outputNormalizer;
 
-	protected OutputHandler[] outputHandlers;
-	protected InputProvider[] inputProviders;
-
 	final private Object SYNCH_OBJECT = new Object();
-	protected Runnable inputProtocol = this::getInputsLinear,
-					   outputProtocol = this::handleOutputsLinear,
-					   forwardPassProtocol = this::forwardPassLinear;
+	protected Runnable forwardPassProtocol = this::forwardPassLinear;
 
 	protected SimpleNeuralNetwork(SimpleNeuralNetwork template) throws NullPointerException{
-		this(template.LAYOUT, NeuralNetworkTools.deepCopy(template.weights), NeuralNetworkTools.deepCopy(template.biases), Arrays.copyOf(template.outputHandlers, template.outputHandlers.length), Arrays.copyOf(template.inputProviders, template.inputProviders.length));
+		this.OUTPUT_LAYER = template.OUTPUT_LAYER;
+
+		this.inputs = new double[template.inputs.length];
+		this.inputNormalizer = template.inputNormalizer;
+		this.inputActivation = template.inputActivation;
+
+		this.outputs = new double[template.outputs.length];
+		this.outputNormalizer = template.outputNormalizer;
+		this.outputActivation = template.outputActivation;
+		
+		this.hiddenLayers = new double[template.hiddenLayers.length][];
+		this.hiddenActivations = new ActivationFunction[template.hiddenActivations.length];
+		this.hiddenNormalizers = new InputNormalizer[template.hiddenNormalizers.length];
+
+		for (int layer = 0; layer < template.hiddenLayers.length; layer++){
+			this.hiddenLayers[layer] = new double[template.hiddenLayers[layer].length];
+			this.hiddenActivations[layer] = template.hiddenActivations[layer].copyOrReuse();
+			this.hiddenNormalizers[layer] = template.hiddenNormalizers[layer].copyOrReuse();
+		}
+
+
+		this.weights = NeuralNetworkTools.deepCopy(template.weights);
+		this.biases = NeuralNetworkTools.deepCopy(template.biases);
 	}
 
 	
 	protected SimpleNeuralNetwork(NetworkLayout layout) throws NullPointerException {
-		LAYOUT = Objects.requireNonNull(layout);
+		Objects.requireNonNull(layout);
 
 		NetworkLayer inputLayerLayout = layout.getInputLayer(),
 					 outputLayerLayout = layout.getOutputLayer();
 		List<NetworkLayer> hiddenLayerLayouts = layout.getHiddenLayers();
-
-		this.outputHandlers = new OutputHandler[outputLayerLayout.getNodeCount()];
-		for (int i = 0; i < outputHandlers.length; i++)
-			outputHandlers[i] = OutputHandler.NO_HANDLER;
-			
-		this.inputProviders = new InputProvider[inputLayerLayout.getNodeCount()];
-		for (int i = 0; i < inputProviders.length; i++)
-			inputProviders[i] = InputProvider.NO_PROVIDER;
-
 
 		this.hiddenLayers = new double[hiddenLayerLayouts.size()][];
 		this.hiddenActivations = new ActivationFunction[hiddenLayerLayouts.size()];
@@ -108,17 +114,13 @@ public class SimpleNeuralNetwork {
 	/**
 	 * @implNote This constructor does not check the given values and should only be used if the inputs are guaranteed to be valid.
 	 */
-	protected SimpleNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler[] outputHandlers, InputProvider[] inputProviders) throws NullPointerException {
-		LAYOUT = layout;
+	protected SimpleNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases) throws NullPointerException {
 		this.weights = weights;
 		this.biases = biases;
 
 		NetworkLayer inputLayerLayout = layout.getInputLayer(),
 					 outputLayerLayout = layout.getOutputLayer();
 		List<NetworkLayer> hiddenLayerLayouts = layout.getHiddenLayers();
-
-		this.outputHandlers = outputHandlers;
-		this.inputProviders = inputProviders;
 
 		this.hiddenLayers = new double[hiddenLayerLayouts.size()][];
 		this.hiddenActivations = new ActivationFunction[hiddenLayerLayouts.size()];
@@ -141,11 +143,15 @@ public class SimpleNeuralNetwork {
 		OUTPUT_LAYER = hiddenLayers.length;
 	}
 
+	public double[] predict(double[] inputs) throws DimensionsMismatchException, NullPointerException{
+		setInputs(inputs);
+		forwardPass();
+		return outputs;
+	}
+
 	public void forwardPass(){
 		synchronized(SYNCH_OBJECT){
-			inputProtocol.run();
 			forwardPassProtocol.run();
-			outputProtocol.run();
 		}
 	}
 
@@ -164,16 +170,6 @@ public class SimpleNeuralNetwork {
 		NeuralNetworkTools.dotSequence(previousLayer, weights[OUTPUT_LAYER], outputs);
 		NeuralNetworkTools.vectorSum(outputs, biases[OUTPUT_LAYER], outputs);
 		applyLayerModifiers(outputs, outputNormalizer, outputActivation);
-	}
-
-	protected void getInputsLinear(){
-		for (int i = 0; i < inputs.length; i++)
-			inputs[i] = inputProviders[i].orElse(inputs[i]);
-	}
-
-	protected void handleOutputsLinear(){
-		for (int i = 0; i < outputHandlers.length; i++)
-			outputHandlers[i].handle(outputs[i]);
 	}
 	
 	public SimpleNeuralNetwork copy() {
@@ -242,10 +238,6 @@ public class SimpleNeuralNetwork {
 		return inputs;
 	}
 
-	public List<InputProvider> getInputProviders() {
-		return new ArrayList<>(Arrays.asList(inputProviders));
-	}
-
 	public double getOutput(int index) throws IndexOutOfBoundsException {
 		return outputs[index];
 	}
@@ -262,18 +254,6 @@ public class SimpleNeuralNetwork {
 	 */
 	public double[] getOutputLayer() {
 		return outputs;
-	}
-
-	public List<OutputHandler> getOutputHandlers() {
-		return new ArrayList<>(Arrays.asList(outputHandlers));
-	}
-
-	public NetworkLayout getLayout(){
-		return LAYOUT;
-	}
-
-	protected NetworkLayer getHiddenLayerLayout(int layerIndex) throws IndexOutOfBoundsException {
-		return LAYOUT.HIDDEN_LAYERS.get(layerIndex);
 	}
 
 	public double getValue(int hiddenLayerIndex, int nodeIndex) throws ArrayIndexOutOfBoundsException {
@@ -332,38 +312,6 @@ public class SimpleNeuralNetwork {
 		}
 	}
 
-	public void setOutputHandler(int index, OutputHandler outputHandler) throws IndexOutOfBoundsException {
-		if(index < 0 || index > outputHandlers.length) throw new IndexOutOfBoundsException(index);
-		synchronized (SYNCH_OBJECT) {
-			this.outputHandlers[index] = OutputHandler.ensureHandler(outputHandler);
-		}
-	}
-
-	public void setInputProvider(int index, InputProvider inputProvider) throws IndexOutOfBoundsException {
-		if(index < 0 || index > inputProviders.length) throw new IndexOutOfBoundsException(index);
-		synchronized (SYNCH_OBJECT) {
-			this.inputProviders[index] = InputProvider.ensureProvider(inputProvider);
-		}
-	}
-
-	public void setOutputHandlers(List<OutputHandler> outputHandlers) throws IllegalArgumentException {
-		if(Objects.requireNonNull(outputHandlers, "List is null.").size() != outputs.length)
-			throw new IllegalArgumentException("Number of objects in list doesn't match number of output nodes. (" + outputHandlers.size() + " != " + outputs.length + ")");
-		synchronized (SYNCH_OBJECT) {
-			for (int i = 0; i < outputs.length; i++)
-				this.outputHandlers[i] = OutputHandler.ensureHandler(outputHandlers.get(i));
-		}
-	}
-
-	public void setInputProviders(List<InputProvider> inputProviders) throws IllegalArgumentException {
-		if(Objects.requireNonNull(inputProviders, "List is null.").size() != inputs.length)
-			throw new IllegalArgumentException("Number of objects in list doesn't match number of input nodes. (" + inputProviders.size() + " != " + inputs.length + ")");
-		synchronized (SYNCH_OBJECT) {
-			for (int i = 0; i < inputs.length; i++)
-				this.inputProviders[i] = InputProvider.ensureProvider(inputProviders.get(i));
-		}
-	}
-
 	/**
 	 * @return a deep copy of the 3-dimensional array containing the weights of the network; consisting of {@code weights[layer][node][weight]}.
 	 * @see {@link MutableNeuralNetwork#retrieveWeightsArray() }
@@ -394,69 +342,6 @@ public class SimpleNeuralNetwork {
 	protected static void applyLayerModifiers(double[] layer, InputNormalizer normalizer, ActivationFunction activationFunction){
 		normalizer.normalize(layer);
 		activationFunction.applyAll(layer, layer);
-	}
-
-	@JsonAdapter(ActivationFunctionAdapter.class)
-	@FunctionalInterface
-	public interface ActivationFunction{
-		public double apply(double[] layer, int index);
-
-		public default double[] applyAll(double[] layer){
-			double[] applied = new double[layer.length];
-			
-			applyAll(layer, applied);
-
-			return applied;
-		}
-
-		public default void applyAll(double[] layer, double[] destination){
-			for(int i = 0; i < layer.length; i++)
-				destination[i] = apply(layer, i);
-		}
-
-        public static ActivationFunction ensureFunction(ActivationFunction function){
-            return (function == null) ? ActivationFunctions.LINEAR : function;
-        }
-	}
-
-	@JsonAdapter(InputNormalizerAdapter.class)
-	@FunctionalInterface
-	public interface InputNormalizer {
-		public void normalize(double[] values);
-
-        public static InputNormalizer ensureNormalizer(InputNormalizer normalizer){
-            return (normalizer == null) ? InputNormalizers.NONE : normalizer;
-        }
-	}
-
-	@FunctionalInterface
-	public interface OutputHandler {
-		final static OutputHandler NO_HANDLER = x -> {};
-
-		public void handle(double output);
-
-		public static OutputHandler ensureHandler(OutputHandler handler){
-			return (handler == null) ? NO_HANDLER : handler;
-		}
-
-		public static OutputHandler none(){
-			return NO_HANDLER;
-		}
-	}
-
-	@FunctionalInterface
-	public interface InputProvider {
-		final static InputProvider NO_PROVIDER = x -> x;
-
-		public double orElse(double value);
-
-		private static InputProvider ensureProvider(InputProvider provider){
-			return (provider == null) ? NO_PROVIDER : provider;
-		}
-
-		public static InputProvider none(){
-			return NO_PROVIDER;
-		}
 	}
 	
 }

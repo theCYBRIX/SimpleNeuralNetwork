@@ -9,6 +9,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
 import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizers;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
 import com.google.gson.reflect.TypeToken;
 
@@ -82,7 +83,7 @@ public class TrainingServerTest extends TestingEnvironment {
                         break;
 
                     case "layout":
-                        println(trainingServer.getIoHandler().getBestNetworks(1).get(0).getLayout());
+                        println(NetworkLayout.of(trainingServer.getIoHandler().getBestNetworks(1).get(0)));
                         break;
                     
                     case "clear":

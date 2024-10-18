@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunction;
+import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 
 public class NetworkDeserializer extends BinaryStorageManager {
     private Map<String, ActivationFunction> activationFunctionNames = BinaryStorageManager.invertMap(BinaryStorageManager.ACTIVATION_FUNCTION_NAMES);

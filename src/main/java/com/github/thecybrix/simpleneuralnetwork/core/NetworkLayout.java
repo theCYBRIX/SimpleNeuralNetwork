@@ -6,8 +6,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.NetworkLayerAdapter;
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.NetworkLayoutAdapter;
 import com.google.gson.annotations.JsonAdapter;
@@ -30,6 +28,10 @@ public class NetworkLayout {
             Objects.requireNonNull(layer);
 
         HIDDEN_LAYERS = Collections.unmodifiableList(Arrays.asList(hiddenLayers));
+    }
+
+    public static NetworkLayout of(SimpleNeuralNetwork network) throws NullPointerException{
+        return new NetworkLayoutBuilder(network).build();
     }
 
 

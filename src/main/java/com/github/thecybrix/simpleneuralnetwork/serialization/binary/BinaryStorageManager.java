@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Map.Entry;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunction;
 import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
+import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizers;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 
 public abstract class BinaryStorageManager {
     final protected static String FILE_EXTENTION = ".snn";

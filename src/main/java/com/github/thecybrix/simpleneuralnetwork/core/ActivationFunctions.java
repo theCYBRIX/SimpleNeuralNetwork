@@ -2,8 +2,6 @@ package com.github.thecybrix.simpleneuralnetwork.core;
 
 import java.util.Arrays;
 
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-
 public enum ActivationFunctions implements ActivationFunction{
 	/**
      * LINEAR
@@ -98,6 +96,11 @@ public enum ActivationFunctions implements ActivationFunction{
                 destination[i] = Math.exp(source[i] - largestInput);
 
             Normalization.Z_Score(destination);
+        }
+
+        @Override
+        public ActivationFunction copyOrReuse() {
+            return new Softmax();
         }
 
         @Override

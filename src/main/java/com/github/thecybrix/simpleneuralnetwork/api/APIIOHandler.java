@@ -105,6 +105,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
     }
 
     final private LinkedList<Consumer<Exception>> CALLBACKS = new LinkedList<>();
+    final private LinkedList<RequestHandler<E>> CUSTOM_REQUEST_HANDLERS = new LinkedList<>();
 
     final private Gson GSON;
 
@@ -124,7 +125,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
     private int numTrainingSamples;
     private Instant trainingStartTime, trainingEndTime;
     
-
+    private volatile boolean keepAlive = false;
     private int numNetworks;
     private List<ScoredNetwork<E>> neuralNetworks = new ArrayList<>();
 
@@ -159,7 +160,8 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
             LELengthPrefixedReader reader = new LELengthPrefixedReader(input);
             LELengthPrefixedWriter writer = new LELengthPrefixedWriter(output);
         ) {
-            while(true){
+            keepAlive = true;
+            while(keepAlive){
                 if(Thread.interrupted()) throw new InterruptedException();
 
                 String request = reader.readString();
@@ -174,6 +176,10 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         } catch (Exception e) {
             logError(e);
         }
+    }
+
+    public void stop(){
+        keepAlive = false;
     }
 
     private void logError(Exception e){
@@ -252,6 +258,10 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
                     return ResponsePacket.message( (r.numRequested > 0) ? getBestNetworks(r.numRequested) : getBestNetworks() );
 
                 default:
+                    for (RequestHandler<E> handler : CUSTOM_REQUEST_HANDLERS)
+                        if(handler.isApplicable(r))
+                            return handler.handle(r);
+
                     return ResponsePacket.error("Invalid request.", "\"" + r.getRequest() + "\" is not a recognized command.");
             }
         } catch (Exception e) {
@@ -261,6 +271,14 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         }
 
 
+    }
+    
+    public void addRequestHandler(RequestHandler<E> handler){
+        CUSTOM_REQUEST_HANDLERS.add(handler);
+    }
+    
+    public boolean removeRequestHandler(RequestHandler<E> handler){
+        return CUSTOM_REQUEST_HANDLERS.removeLastOccurrence(handler);
     }
 
     public List<E> getBestNetworks(){
@@ -443,8 +461,13 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         return stackTrace.toString();
     }
 
+    public static interface RequestHandler<E extends MutableNeuralNetwork>{
+        public boolean isApplicable(RequestPacket request);
+        public ResponsePacket<E> handle(RequestPacket request) throws Exception;
+    }
+
     @SuppressWarnings("unused")
-    private static class ResponsePacket<E extends MutableNeuralNetwork>{
+    public static class ResponsePacket<E extends MutableNeuralNetwork>{
         private Status status;
         private String message;
         private String details;
@@ -526,7 +549,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         }
     }
 
-    private static class RequestPacket{
+    public static class RequestPacket{
         private String request;
         private NetworkDataPacket networkInputs;
         private NetworkScorePacket networkScores;

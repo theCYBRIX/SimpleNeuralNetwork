@@ -1,11 +1,11 @@
 package com.github.thecybrix.simpleneuralnetwork.serialization.json;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunction;
+import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout.NetworkLayer;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 

@@ -1,7 +1,5 @@
 package com.github.thecybrix.simpleneuralnetwork.core;
 
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
-
 public enum InputNormalizers implements InputNormalizer{
 
     NONE { @Override public void normalize(double[] values) {} },
@@ -40,6 +38,11 @@ public enum InputNormalizers implements InputNormalizer{
 
         public void setRangeEnd(double rangeEnd) {
             this.rangeEnd = rangeEnd;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return (obj != null) && (obj instanceof MinMaxNormalization);
         }
     }
     

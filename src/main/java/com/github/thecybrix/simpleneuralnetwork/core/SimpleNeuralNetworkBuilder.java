@@ -1,10 +1,7 @@
 package com.github.thecybrix.simpleneuralnetwork.core;
 
-import java.util.List;
 import java.util.function.Function;
 
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputProvider;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.OutputHandler;
 import com.google.gson.JsonSyntaxException;
 
 public class SimpleNeuralNetworkBuilder extends NeuralNetworkBuilder<SimpleNeuralNetwork>{
@@ -24,10 +21,6 @@ public class SimpleNeuralNetworkBuilder extends NeuralNetworkBuilder<SimpleNeura
 
     public SimpleNeuralNetworkBuilder(SimpleNeuralNetworkBuilder initialState) throws NullPointerException{
         super(initialState);
-    }
-
-    public SimpleNeuralNetworkBuilder(NetworkLayout initialState, List<InputProvider> inputProvider, List<OutputHandler> outputHandler) throws NullPointerException{
-        super(NETWORK_SUPPLIER, initialState, inputProvider, outputHandler);
     }
 
     public SimpleNeuralNetworkBuilder newBuilder(){

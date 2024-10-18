@@ -320,11 +320,20 @@ final public class NeuralNetworkTools {
 		return weights;
 	}
 
-	public static boolean haveSameActivationFunction(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2, int layer) throws NullPointerException {
-		NetworkLayer network1Layer = network1.getHiddenLayerLayout(layer);
-		NetworkLayer network2Layer = network2.getHiddenLayerLayout(layer);
+	public static boolean haveSameActivationFunction(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2, int layerIndex) throws IndexOutOfBoundsException, IllegalArgumentException, NullPointerException {
+		if(layerIndex < 0) throw new IllegalArgumentException("layer index must be >= 0");
+		if(layerIndex == 0) return network1.inputActivation.equals(network2.inputActivation);
 
-		return network1Layer.getActivationFunction().equals(network2Layer.getActivationFunction());
+		//Adjust index to start at first hidden layer
+		layerIndex -= 1;
+		
+		if( (network1.hiddenActivations.length - layerIndex) < 0) throw new IndexOutOfBoundsException("Network layer index " + layerIndex + " out of bounds for network1 with " + (network1.hiddenActivations.length + 2) + " layers.");
+		if( (network2.hiddenActivations.length - layerIndex) < 0) throw new IndexOutOfBoundsException("Network layer index " + layerIndex + " out of bounds for network2 with " + (network2.hiddenActivations.length + 2) + " layers.");
+
+		ActivationFunction network1Function = (network1.hiddenActivations.length - layerIndex) == 0 ? network1.outputActivation : network1.hiddenActivations[layerIndex];
+		ActivationFunction network2Function = (network2.hiddenActivations.length - layerIndex) == 0 ? network2.outputActivation : network2.hiddenActivations[layerIndex];
+
+		return network1Function.equals(network2Function);
 	}
 
 
@@ -368,8 +377,27 @@ final public class NeuralNetworkTools {
 		return true;
 	}
 
-	public static boolean haveSameLayout(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws NullPointerException {		
-		return network1.LAYOUT.equals(network2.LAYOUT);
+	public static boolean haveSameLayout(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws NullPointerException {
+		if(!haveSameDimensions(network1, network2)) return false;
+
+		if(network1.hiddenLayers.length != network2.hiddenLayers.length) return false;
+		
+		if( 
+			!network1.inputActivation.equals(network2.inputActivation) ||
+			!network1.inputNormalizer.equals(network2.inputNormalizer) ||
+			!network1.outputActivation.equals(network2.outputActivation) ||
+			!network1.outputNormalizer.equals(network2.outputNormalizer)
+		) return false;
+
+
+		for (int i = 0; i < network1.hiddenLayers.length; i++) {
+			if( 
+				!network1.hiddenActivations[i].equals(network2.hiddenActivations[i]) ||
+				!network1.hiddenNormalizers[i].equals(network2.hiddenNormalizers[i])
+			) return false;
+		}
+
+		return true;
 	}
 
 	public static <E extends SimpleNeuralNetwork> boolean haveSameWeights(Collection<E> networks) throws NullPointerException {
@@ -479,27 +507,19 @@ final public class NeuralNetworkTools {
 
 	private static boolean haveSameDimensions(SimpleNeuralNetwork network1, SimpleNeuralNetwork network2) throws NullPointerException {
 
-		NetworkLayout layout1 = network1.getLayout(),
-					  layout2 = network2.getLayout();
-
-		if (layout1.getInputLayer().getNodeCount() != layout2.getInputLayer().getNodeCount())
-			return false;
-
-		if (layout1.getOutputLayer().getNodeCount() != layout2.getOutputLayer().getNodeCount())
-			return false;
-
-		List<NetworkLayer> hiddenLayers1 = layout1.getHiddenLayers(),
-						   hiddenLayers2 = layout2.getHiddenLayers();
-			
-		if(hiddenLayers1.size() != hiddenLayers2.size())
-			return false;
+		if(network1.hiddenLayers.length != network2.hiddenLayers.length) return false;
 		
-		Iterator<NetworkLayer> layerIterator1 = hiddenLayers1.iterator(),
-							   layerIterator2 = hiddenLayers2.iterator();
+		if( 
+			network1.inputs.length != network2.inputs.length ||
+			network1.outputs.length != network2.outputs.length
+		) return false;
 
-		while(layerIterator1.hasNext() && layerIterator2.hasNext())
-			if(layerIterator1.next().getNodeCount() != layerIterator2.next().getNodeCount())
-				return false;
+
+		for (int i = 0; i < network1.hiddenLayers.length; i++) {
+			if( 
+				network1.hiddenLayers[i].length != (network2.hiddenLayers[i].length)
+			) return false;
+		}
 
 		return true;
 	}
@@ -556,6 +576,26 @@ final public class NeuralNetworkTools {
 			}
 		}
 		return copy;
+	}
+
+	final public static boolean haveSameDimensions(double[][] matrixA, double[][] matrixB){
+		if (matrixA.length != matrixB.length) return false;
+		
+		for (int i = 0; i < matrixA.length; i++)
+			if( matrixA[i].length != matrixB[i].length ) return false;
+
+		return true;
+	}
+
+	final public static boolean haveSameDimensions(double[][][] matrixA, double[][][] matrixB){
+		for (int i = 0; i < matrixA.length; i++){
+			if( matrixA[i].length != matrixB[i].length ) return false;
+
+			for (int j = 0; j < matrixA[i].length; j++)
+				if( matrixA[i][j].length != matrixB[i][j].length ) return false;
+		}
+
+		return true;
 	}
 
 	private static class RandomNumberGeneratorHolder{

@@ -30,7 +30,7 @@ public class NeuralNetworkAdapter<E extends SimpleNeuralNetwork> extends TypeAda
         final Gson GSON = CustomGsonFactory.getInstance();
         
         out.beginObject();
-        out.name(LAYOUT).jsonValue(GSON.toJson(value.getLayout(), NetworkLayout.class));
+        out.name(LAYOUT).jsonValue(GSON.toJson(NetworkLayout.of(value), NetworkLayout.class));
         out.name(WEIGHTS).jsonValue(GSON.toJson(value.getWeights(), double[][][].class));
         out.name(BIASES).jsonValue(GSON.toJson(value.getBiases(), double[][].class));
         out.endObject();

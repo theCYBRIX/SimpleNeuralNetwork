@@ -2,9 +2,9 @@ package com.github.thecybrix.simpleneuralnetwork.serialization.json;
 
 import java.io.IOException;
 
+import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunction;
+import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout.NetworkLayer;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;

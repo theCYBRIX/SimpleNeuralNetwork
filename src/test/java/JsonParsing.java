@@ -41,7 +41,7 @@ public class JsonParsing extends TestingEnvironment {
         serializedNetwork = MutableNeuralNetworkBuilder.fromJson(asJson);
 
         println("\nNetwork Layout:");
-        println(serializedNetwork.getLayout());
+        println(NetworkLayout.of(serializedNetwork));
 
         println("\nNetwork as JSON:");
         println(asJson);

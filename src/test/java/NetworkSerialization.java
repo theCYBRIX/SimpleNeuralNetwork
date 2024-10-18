@@ -35,8 +35,8 @@ public class NetworkSerialization extends TestingEnvironment {
 
         deserializedNetwork = deserializer.load(file_path, new MutableNeuralNetworkBuilder()).build();
 
-        println("\n\nOriginal:\n" + originalNetwork.getLayout());
-        println("\n\nFrom file:\n" + deserializedNetwork.getLayout());
+        println("\n\nOriginal:\n" + NetworkLayout.of(originalNetwork));
+        println("\n\nFrom file:\n" + NetworkLayout.of(deserializedNetwork));
 
         println("\nShould be true: " + originalNetwork.equals(deserializedNetwork));
 

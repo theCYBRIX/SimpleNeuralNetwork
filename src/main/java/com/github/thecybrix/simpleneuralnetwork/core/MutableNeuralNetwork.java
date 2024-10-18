@@ -18,8 +18,8 @@ public class MutableNeuralNetwork extends SimpleNeuralNetwork{
 		super(template);
 	}
 
-	protected MutableNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases, OutputHandler[] outputHandlers, InputProvider[] inputProviders) throws DimensionsMismatchException, NullPointerException {
-		super(layout, weights, biases, outputHandlers, inputProviders);
+	protected MutableNeuralNetwork(NetworkLayout layout, double[][][] weights, double[][] biases) throws DimensionsMismatchException, NullPointerException {
+		super(layout, weights, biases);
 	}
 
 	@Override
@@ -102,7 +102,8 @@ public class MutableNeuralNetwork extends SimpleNeuralNetwork{
 	}
 
 	public void setWeights(double[][][] values) throws DimensionsMismatchException, NullPointerException {
-		setWeightsUnchecked(NeuralNetworkTools.ensureValidWeightArray(LAYOUT, values));
+		if(!NeuralNetworkTools.haveSameDimensions(weights, values)) throw new DimensionsMismatchException("Matrices have differing dimensions.");
+		setWeightsUnchecked(values);
 	}
 
 	protected void setWeightsUnchecked(double[][][] values) throws ArrayIndexOutOfBoundsException, NullPointerException {
@@ -180,7 +181,8 @@ public class MutableNeuralNetwork extends SimpleNeuralNetwork{
 	}
 	
 	public void setBiases(double[][] values) throws DimensionsMismatchException, NullPointerException {
-		setBiasesUnchecked(NeuralNetworkTools.ensureValidBiasArray(LAYOUT, values));
+		if(!NeuralNetworkTools.haveSameDimensions(biases, values)) throw new DimensionsMismatchException("Matrices have differing dimensions.");
+		setBiasesUnchecked(values);
 	}
 	
 	protected void setBiasesUnchecked(double[][] values) throws ArrayIndexOutOfBoundsException, NullPointerException {

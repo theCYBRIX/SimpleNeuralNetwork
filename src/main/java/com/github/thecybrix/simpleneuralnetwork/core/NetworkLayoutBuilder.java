@@ -4,8 +4,6 @@ import java.util.LinkedList;
 import java.util.Objects;
 
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout.NetworkLayer;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.ActivationFunction;
-import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork.InputNormalizer;
 
 public class NetworkLayoutBuilder {
 
@@ -37,7 +35,7 @@ public class NetworkLayoutBuilder {
     }
 
     public NetworkLayoutBuilder(NetworkLayout initialState) throws NullPointerException {
-        this.setState(initialState);
+        this.initializeState(initialState);
     }
 
     public NetworkLayoutBuilder(NetworkLayoutBuilder initialState) throws NullPointerException {
@@ -49,6 +47,15 @@ public class NetworkLayoutBuilder {
             this.layout = initialState.layout;
             this.layoutCached = true;
         }
+    }
+
+    public NetworkLayoutBuilder(SimpleNeuralNetwork initialState) throws NullPointerException {
+        Objects.requireNonNull(initialState, "initialState is null.");
+
+        withInputLayer(initialState.inputs.length, initialState.inputNormalizer, initialState.inputActivation);
+        withOutputLayer(initialState.outputs.length, initialState.outputNormalizer, initialState.outputActivation);
+        for (int layer = 0; layer < initialState.hiddenLayers.length; layer++)
+            addLayer(initialState.hiddenLayers[layer].length, initialState.hiddenNormalizers[layer], initialState.hiddenActivations[layer]);
     }
 
 
@@ -68,14 +75,36 @@ public class NetworkLayoutBuilder {
 
     public NetworkLayoutBuilder setState(NetworkLayout layout) throws NullPointerException{
         Objects.requireNonNull(layout, "layout is null.");
+        hiddenLayers.clear();
+
+        initializeState(layout);
+
+        return this;
+    }
+
+    private void initializeState(NetworkLayout layout){
 		input = layout.getInputLayer();
 		output = layout.getOutputLayer();
-        hiddenLayers.clear();
 		hiddenLayers.addAll(layout.getHiddenLayers());
 
         this.layout = layout;
         layoutCached = true;
+    }
+
+    public NetworkLayoutBuilder setState(SimpleNeuralNetwork network) throws NullPointerException{
+        Objects.requireNonNull(network, "network is null.");
+		reset();
+
+        initializeState(network);
+
         return this;
+    }
+
+    private void initializeState(SimpleNeuralNetwork network) throws NullPointerException{
+        input = new NetworkLayer(network.inputs.length, network.inputNormalizer, network.inputActivation);
+        output = new NetworkLayer(network.outputs.length, network.outputNormalizer, network.outputActivation);
+        for (int layer = 0; layer < network.hiddenLayers.length; layer++)
+            hiddenLayers.add(new NetworkLayer(network.hiddenLayers[layer].length, network.hiddenNormalizers[layer], network.hiddenActivations[layer]));
     }
 
     public void reset(){

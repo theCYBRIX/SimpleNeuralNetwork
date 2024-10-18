@@ -13,6 +13,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.RequestHandler;
+import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.RequestPacket;
+import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
@@ -64,6 +67,20 @@ public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable
         parentSelector = (parentSelector != null) ? parentSelector : ParentSelector.eliteSelection();
 
         ioHandler = new APIIOHandler<>(networkBuilder, parentSelector, executorService);
+        ioHandler.addRequestHandler(new RequestHandler<E>() {
+
+            @Override
+            public boolean isApplicable(RequestPacket request) {
+                return request.getRequest().equalsIgnoreCase("exit");
+            }
+
+            @Override
+            public ResponsePacket<E> handle(RequestPacket request) throws Exception {
+                ioHandler.stop();
+                return ResponsePacket.ok();
+            }
+            
+        });
         ioHandler.attachCallback(e -> logError(e));
     }
 
