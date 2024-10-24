@@ -130,6 +130,10 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 		return Collections.unmodifiableList(neuralNetworks);
 	}
 
+	public NetworkEvolutionManager<E> getEvolutionManager() {
+		return EVOLUTION_MANAGER;
+	}
+
 	public void stop() throws SecurityException{
 		keepAlive = false;
 		if(runningThread != null) runningThread.interrupt();

@@ -27,4 +27,9 @@ public class Elitism<E extends MutableNeuralNetwork, T extends Comparable<T>> im
     private static <E extends MutableNeuralNetwork> ScoredNetwork<E> shallowCopy(ScoredNetwork<E> network){
         return new ScoredNetwork<E>(network.get(), network.getScore());
     }
+
+    @Override
+    public String getIdentifyer() {
+        return "elitism";
+    }
 }

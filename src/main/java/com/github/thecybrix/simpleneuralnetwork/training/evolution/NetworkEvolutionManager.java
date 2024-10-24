@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
@@ -21,14 +22,24 @@ import com.github.thecybrix.util.CompoundRatio;
 import com.github.thecybrix.util.Fraction;
 
 public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
+
+    private static ExecutorService executorService;
+    private static int executorServiceUsers = 0;
+
     final private CompoundRatio NETWORK_DISTRIBUTION;
-    private boolean parallel = false;
+
+    private boolean parallel = false, createMetadata = false;
     private BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>> newGenerationFunction = this::linearNewGeneration;
     private ParentSelector<E> parentSelector;
 
     private ArrayList<OffspringGenerator<E>> offspringGenerators;
     private float parentFraction;
     private Supplier<E> networkSupplier;
+
+
+    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders) throws DimensionsMismatchException, IllegalArgumentException, ArithmeticException, NullPointerException{
+        this(parentFraction, parentSelector, networkSupplier, offspringProviders, CompoundRatio.uniform(offspringProviders.size()));
+    }
 
     public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders, CompoundRatio distribution) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException{
         if(offspringProviders.size() <= 0) throw new IllegalArgumentException("Illegal number of offspring providers. Collection.size() <= 0");
@@ -49,16 +60,59 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         this.offspringGenerators = new ArrayList<>(offspringProviders);
     }
 
-    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders) throws DimensionsMismatchException, IllegalArgumentException, ArithmeticException, NullPointerException{
-        this(parentFraction, parentSelector, networkSupplier, offspringProviders, CompoundRatio.uniform(offspringProviders.size()));
+
+    private synchronized static void registerExecutorServiceUsage(){
+        executorServiceUsers += 1;
+        if(executorService == null) executorService = Executors.newWorkStealingPool();
+    }
+
+    private synchronized static void unregisterExecutorServiceUsage(){
+        executorServiceUsers -= 1;
+        if(executorServiceUsers != 0) return;
+
+        try {
+            executorService.shutdown();
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        } finally {
+            executorService = null;
+        }
     }
 
 
     public void setParallel(boolean enabled){
         if(enabled == parallel) return;
+        parallel = enabled;
+
+        if(parallel)
+            registerExecutorServiceUsage();
+        else
+            unregisterExecutorServiceUsage();
+        
+        updateNewGenerationFunction();
+    }
+    
+    public void setCreateMetadata(boolean enabled){
+        if(enabled == createMetadata) return;
+        createMetadata = enabled;
+        updateNewGenerationFunction();
+    }
+
+    private void updateNewGenerationFunction(){
         synchronized(newGenerationFunction){
-            parallel = enabled;
-            newGenerationFunction = parallel ? new ParallelNewGeneration() : this::linearNewGeneration;
+            newGenerationFunction = getNewGenerationFunction(parallel, createMetadata);
+        }
+    }
+
+    private BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>> getNewGenerationFunction(boolean parallel, boolean withMetadata){
+        if(parallel){
+            return withMetadata ? new ParallelNewGenerationWithMetadata() : new ParallelNewGeneration();
+        } else {
+            return withMetadata ? this::linearNewGeneration : this::linearNewGenerationWithMetadata;
         }
     }
 
@@ -110,6 +164,29 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         return nerworksPerProvider;
     }
 
+    private List<ScoredNetwork<E>> createOffspringWithMetadata(List<ScoredNetwork<E>> parentNetworks, OffspringGenerator<E> generator, Integer numOffspring){
+        List<ScoredNetwork<E>> offspring = generator.createOffspring(parentNetworks, numOffspring);
+        
+        for(ScoredNetwork<E> o : offspring)
+            o.get().putMetadata("offspringGenerator", generator.getIdentifyer());
+
+        return offspring;
+    }
+
+    private List<ScoredNetwork<E>> linearNewGenerationWithMetadata(List<ScoredNetwork<E>> parentNetworks, Integer numOffspring){
+        ArrayList<ScoredNetwork<E>> newGeneration = new ArrayList<>(numOffspring);
+        Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
+
+        for(int i = 0; i < networksPerProvider.length; i++){
+            OffspringGenerator<E> generator = offspringGenerators.get(i);
+            List<ScoredNetwork<E>> offspring = createOffspringWithMetadata(parentNetworks, generator, networksPerProvider[i]);
+
+            offspring.addAll(offspring);
+        }
+
+        return newGeneration;
+    }
+
     private List<ScoredNetwork<E>> linearNewGeneration(List<ScoredNetwork<E>> parentNetworks, Integer numOffspring) {
         ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
         Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
@@ -121,7 +198,6 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
     }
 
     private class ParallelNewGeneration implements BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>>{
-        ExecutorService executorService = Executors.newWorkStealingPool();
 
         @Override
         public List<ScoredNetwork<E>> apply(List<ScoredNetwork<E>> parents, Integer numOffspring) {
@@ -130,9 +206,8 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
             Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
 
             for(int i = 0; i < offspringGenerators.size(); i++){
-                final OffspringGenerator<E> PROVIDER = offspringGenerators.get(i);
-                final int NUM_OFFSPRING = networksPerProvider[i];
-                Callable<List<ScoredNetwork<E>>> task = () -> PROVIDER.createOffspring(parents, NUM_OFFSPRING);
+                final int index = i;
+                Callable<List<ScoredNetwork<E>>> task = () -> createOffspring(parents, offspringGenerators.get(index), networksPerProvider[index]);
                 processes.add(executorService.submit(task));
             }
 
@@ -148,5 +223,16 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
             return offspring;
         }
 
+        protected List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, OffspringGenerator<E> generator, int numOffspring){
+            return generator.createOffspring(parents, numOffspring);
+        }
+
+    }
+
+    private class ParallelNewGenerationWithMetadata extends ParallelNewGeneration {
+        @Override
+        protected List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, OffspringGenerator<E> generator, int numOffspring) {
+            return createOffspringWithMetadata(parents, generator, numOffspring);
+        }
     }
 }

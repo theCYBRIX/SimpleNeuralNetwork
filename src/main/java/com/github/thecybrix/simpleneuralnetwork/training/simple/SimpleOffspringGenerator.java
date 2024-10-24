@@ -12,14 +12,31 @@ import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.OffspringGenerator;
 
 public abstract class SimpleOffspringGenerator<E extends MutableNeuralNetwork> implements OffspringGenerator<E> {
+    final public static String NO_IDENTIFYER = "unspecified";
+
+    final private String IDENTIFYER;
+
+    protected SimpleOffspringGenerator(String identifyer){
+        IDENTIFYER = Objects.requireNonNull(identifyer, "Identifyer may not be null.");
+    }
 
     final public static <E extends MutableNeuralNetwork> OffspringGenerator<E> createInstance(Function<ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction) throws NullPointerException{
-        return new SingleParentOffspringProvider<>(offspringFunction);
+        return createInstance(offspringFunction, NO_IDENTIFYER);
+    }
+
+    final public static <E extends MutableNeuralNetwork> OffspringGenerator<E> createInstance(Function<ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction, String name) throws NullPointerException{
+        return new SingleParentOffspringProvider<>(offspringFunction, name);
     }
 
     final public static <E extends MutableNeuralNetwork> OffspringGenerator<E> createInstance(BiFunction<ScoredNetwork<E>, ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction) throws NullPointerException{
-        return new TwoParentOffspringProvider<>(offspringFunction);
+        return createInstance(offspringFunction, NO_IDENTIFYER);
     }
+
+    final public static <E extends MutableNeuralNetwork> OffspringGenerator<E> createInstance(BiFunction<ScoredNetwork<E>, ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction, String name) throws NullPointerException{
+        return new TwoParentOffspringProvider<>(offspringFunction, name);
+    }
+
+    protected abstract ScoredNetwork<E> applyAtIndex(List<ScoredNetwork<E>> parents, int index);
 
     @Override
     final public List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, int numOffspring) {
@@ -32,12 +49,16 @@ public abstract class SimpleOffspringGenerator<E extends MutableNeuralNetwork> i
         return offspring;
     }
 
-    protected abstract ScoredNetwork<E> applyAtIndex(List<ScoredNetwork<E>> parents, int index);
+    @Override
+    public String getIdentifyer() {
+        return IDENTIFYER;
+    }
 
     protected static class TwoParentOffspringProvider<E extends MutableNeuralNetwork> extends SimpleOffspringGenerator<E>{
         final protected BiFunction<ScoredNetwork<E>, ScoredNetwork<E>, ScoredNetwork<E>> OFFSPRING_FUNCTION;
 
-        public TwoParentOffspringProvider(BiFunction<ScoredNetwork<E>, ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction) throws NullPointerException{
+        public TwoParentOffspringProvider(BiFunction<ScoredNetwork<E>, ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction, String identifyer) throws NullPointerException{
+            super(identifyer);
             OFFSPRING_FUNCTION = Objects.requireNonNull(offspringFunction);
         }
 
@@ -54,7 +75,8 @@ public abstract class SimpleOffspringGenerator<E extends MutableNeuralNetwork> i
     protected static class SingleParentOffspringProvider<E extends MutableNeuralNetwork> extends SimpleOffspringGenerator<E>{
         final protected Function<ScoredNetwork<E>, ScoredNetwork<E>> OFFSPRING_FUNCTION;
 
-        public SingleParentOffspringProvider(Function<ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction) throws NullPointerException{
+        public SingleParentOffspringProvider(Function<ScoredNetwork<E>, ScoredNetwork<E>> offspringFunction, String identifyer) throws NullPointerException{
+            super(identifyer);
             OFFSPRING_FUNCTION = Objects.requireNonNull(offspringFunction);
         }
 

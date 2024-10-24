@@ -11,13 +11,19 @@ import com.google.gson.annotations.JsonAdapter;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 @JsonAdapter(SimpleNeuralNetworkAdapter.class)
 public class SimpleNeuralNetwork {
 
 	final protected int OUTPUT_LAYER;
+
+	private HashMap<String, String> metadata = null;
 
 	protected double[][][] weights;
 	protected double[][] biases;
@@ -230,6 +236,20 @@ public class SimpleNeuralNetwork {
 	***************************************************** Getters ******************************************************
 	*******************************************************************************************************************/
 
+	public Map<String, String> getMetadata(){
+		if (metadata == null)
+			return Collections.emptyMap();
+		else
+			return Collections.unmodifiableMap(metadata);
+	}
+
+	public Optional<String> getMetadata(String key){
+		if (metadata == null || !metadata.containsKey(key))
+			return Optional.empty();
+		else
+			return Optional.of(metadata.get(key));
+	}
+
 	public double getInput(int index) throws IndexOutOfBoundsException {
 		return inputs[index];
 	}
@@ -294,6 +314,31 @@ public class SimpleNeuralNetwork {
 	/*******************************************************************************************************************
 	***************************************************** Setters ******************************************************
 	*******************************************************************************************************************/
+
+	public void setMetadata(Map<String, String> data){
+		if(data == null || data.isEmpty())
+			metadata = null;
+		else
+			metadata = new HashMap<>(data);
+	}
+
+	public void clearMetadata(){
+		metadata = null;
+	}
+
+	public String putMetadata(String key, String value){
+		if (metadata == null)
+			metadata = new HashMap<>();
+		
+		return metadata.put(key, value);
+	}
+
+	public String removeMetadata(String key){
+		if(metadata == null) return null;
+		String value = metadata.remove(key);
+		if(metadata.size() == 0) metadata = null;
+		return value;
+	}
 
 	public void setInputs(double[] values) throws NullPointerException, DimensionsMismatchException {
 		if (Objects.requireNonNull(values, "Value array is null.").length != this.inputs.length)

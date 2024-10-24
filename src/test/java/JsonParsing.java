@@ -1,3 +1,6 @@
+import java.time.Instant;
+import java.util.HashMap;
+
 import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
@@ -13,6 +16,10 @@ public class JsonParsing extends TestingEnvironment {
     public static void main(String... args){
         MutableNeuralNetwork serializedNetwork, originalNetwork;
 
+        HashMap<String, String> metadata = new HashMap<>();
+        metadata.put("source", "test");
+        metadata.put("date", Instant.now().toString());
+
 
         String asJson;
 
@@ -23,6 +30,7 @@ public class JsonParsing extends TestingEnvironment {
                                .build();
 
         MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder(layout);
+        builder.withMetadata(metadata);
 
         originalNetwork = builder.build();
 

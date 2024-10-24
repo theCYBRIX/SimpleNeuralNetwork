@@ -3,6 +3,7 @@ package com.github.thecybrix.simpleneuralnetwork.core;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
@@ -22,6 +23,7 @@ public abstract class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> implem
 
     final private Function<NetworkLayout, E> NETWORK_SUPPLIER;
     private NetworkLayoutBuilder layoutBuilder;
+    private Map<String, String> metadata = null;
     private Optional<double[][][]> weights = Optional.empty();
     private Optional<double[][]> biases = Optional.empty();
     private Optional<ExecutorService> inputFetchingService = Optional.empty(),
@@ -81,6 +83,8 @@ public abstract class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> implem
             if(biases.isPresent()) instance.biases = NeuralNetworkTools.deepCopy(biases.get());
             if(weights.isPresent()) instance.weights = NeuralNetworkTools.deepCopy(weights.get());
 
+            instance.setMetadata(metadata);
+
         } catch (IllegalArgumentException | DimensionsMismatchException e) {
             throw new IllegalStateException("Unable to build neural network from current state.", e);
         }
@@ -136,6 +140,11 @@ public abstract class NeuralNetworkBuilder<E extends SimpleNeuralNetwork> implem
         return converted;
     }
 
+
+    public NeuralNetworkBuilder<E> withMetadata(Map<String, String> data){
+        metadata = data;
+        return this;
+    }
 
     public NeuralNetworkBuilder<E> withLayout(NetworkLayout layout) throws NullPointerException{
         layoutBuilder.setState(layout);

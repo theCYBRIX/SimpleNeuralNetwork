@@ -209,6 +209,10 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
                 case "process_inputs":
                     NetworkDataPacket outputs = processInputs(r.getInputs());
                     return ResponsePacket.message(outputs);
+                
+                case "get_metadata":
+                    NetworkMetadataPacket metadataPacket = getMetadata(r.getIDs());
+                    return ResponsePacket.message(metadataPacket);
 
                 case "approximate_data_set":
                     if(datasetTrainer != null && datasetTrainer.isRunning()){
@@ -349,6 +353,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         numNetworks = properties.getNumNetworks();
         NETWORK_BUILDER.reset().withLayout(layout);
         evolutionManager = new SimpleEvolutionManager<>(NETWORK_BUILDER::build, parentSelector);
+        evolutionManager.setCreateMetadata(true);
 
         synchronized(PREV_GEN_LOCK){
             if(previousGeneration.size() > 0)
@@ -434,6 +439,13 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         }
     }
 
+    private NetworkMetadataPacket getMetadata(NetworkIDPacket ids){
+        NetworkMetadataPacket metadataPacket = new NetworkMetadataPacket(ids.size());
+        Map<Integer, Map<String, String>> synchronizedMetadataPacket = Collections.synchronizedMap(metadataPacket);
+        ids.parallelStream().forEach(x -> synchronizedMetadataPacket.put(x, neuralNetworks.get(x).get().getMetadata()));
+        return metadataPacket;
+    }
+
     private void setPrevGen(List<ScoredNetwork<E>> networks){
         synchronized(PREV_GEN_LOCK){
             previousGeneration = networks;
@@ -472,6 +484,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         private String message;
         private String details;
         private Map<Integer, double[]> networkOutputs;
+        private Map<Integer, Map<String, String>> networkMetadata;
         private List<E> networks;
         private TrainingStatusPacket trainingStatus;
 
@@ -488,28 +501,37 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         }
 
         private ResponsePacket(Status status, String message, String details) {
-            this(status, message, details, null, null, null);
+            this(status, message, details, null, null, null, null);
         }
 
         private ResponsePacket(NetworkDataPacket networkOutputs) {
-            this(Status.OK, null, null, networkOutputs, null, null);
+            this(Status.OK, null, null, networkOutputs, null, null, null);
+        }
+
+        private ResponsePacket(NetworkMetadataPacket networkMetadata) {
+            this(Status.OK, null, null, null, networkMetadata, null, null);
         }
 
         private ResponsePacket(TrainingStatusPacket trainingStatus) {
-            this(Status.OK, null, null, null, trainingStatus, null);
+            this(Status.OK, null, null, null, null, trainingStatus, null);
         }
 
         private ResponsePacket(List<E> networks) {
-            this(Status.OK, null, null, null, null, networks);
+            this(Status.OK, null, null, null, null, null, networks);
         }
 
-        private ResponsePacket(Status status, String message, String details, NetworkDataPacket networkOutputs, TrainingStatusPacket trainingStatus, List<E> networks) {
+        private ResponsePacket(Status status, String message, String details, NetworkDataPacket networkOutputs, NetworkMetadataPacket networkMetadata, TrainingStatusPacket trainingStatus, List<E> networks) {
             this.status = status;
             this.message = message;
             this.details = details;
             this.networkOutputs = networkOutputs;
             this.networks = networks;
             this.trainingStatus = trainingStatus;
+            this.networkMetadata = networkMetadata;
+        }
+
+        public static <E extends MutableNeuralNetwork> ResponsePacket<E> message(NetworkMetadataPacket data){
+            return new ResponsePacket<>(data);
         }
 
         public static <E extends MutableNeuralNetwork> ResponsePacket<E> message(NetworkDataPacket data){
@@ -553,6 +575,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         private String request;
         private NetworkDataPacket networkInputs;
         private NetworkScorePacket networkScores;
+        private NetworkIDPacket networkIDs;
         private TrainingDataSet trainingDataSet;
         private SetupPacket setupProperties;
         private int numRequested = -1;
@@ -567,6 +590,10 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
 
         public NetworkScorePacket getScores() throws NoSuchElementException {
             return requireNonNull(networkScores, "networkScores");
+        }
+
+        public NetworkIDPacket getIDs() throws NoSuchElementException {
+            return requireNonNull(networkIDs, "networkIDs");
         }
 
         public SetupPacket getSetupProperties() throws NoSuchElementException {
@@ -619,6 +646,28 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         }
 
         public NetworkDataPacket(int initialSize){
+            super(initialSize);
+        }
+    }
+    
+    @SuppressWarnings("unused")
+    private static class NetworkMetadataPacket extends HashMap<Integer, Map<String, String>>{
+        public NetworkMetadataPacket(){
+            super();
+        }
+
+        public NetworkMetadataPacket(int initialSize){
+            super(initialSize);
+        }
+    }
+    
+    @SuppressWarnings("unused")
+    private static class NetworkIDPacket extends ArrayList<Integer>{
+        public NetworkIDPacket(){
+            super();
+        }
+
+        public NetworkIDPacket(int initialSize){
             super(initialSize);
         }
     }
