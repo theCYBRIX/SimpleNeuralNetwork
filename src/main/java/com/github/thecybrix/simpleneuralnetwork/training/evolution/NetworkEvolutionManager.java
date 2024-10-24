@@ -17,7 +17,6 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.simpleneuralnetwork.training.simple.Elitism;
 import com.github.thecybrix.util.CompoundRatio;
 import com.github.thecybrix.util.Fraction;
 
@@ -115,13 +114,8 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
         Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
 
-        for(int i = 0; i < networksPerProvider.length; i++){
-            if(offspringGenerators.get(i) instanceof Elitism){
-                Collection<ScoredNetwork<E>> elites = offspringGenerators.get(i).createOffspring(parentNetworks, networksPerProvider[i]);
-                offspring.addAll(elites);
-            } else
-                offspring.addAll(offspringGenerators.get(i).createOffspring(parentNetworks, networksPerProvider[i]));
-        }
+        for(int i = 0; i < networksPerProvider.length; i++)
+            offspring.addAll(offspringGenerators.get(i).createOffspring(parentNetworks, networksPerProvider[i]));
 
         return offspring;
     }

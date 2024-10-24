@@ -57,9 +57,8 @@ public interface ParentSelector<E extends MutableNeuralNetwork> {
         if(numNetworks > population.size()) throw new IllegalArgumentException("numNetworks is larger than population.size()");
         if(numNetworks < 0) throw new IllegalArgumentException("numNetworks is less than 0");
         if(numNetworks == 0) return Collections.emptyList();
-        int lastIndex = population.size() - 1;
         Collections.sort(population, comparator);
-        return new ArrayList<>(population.subList(lastIndex - numNetworks, lastIndex));
+        return new ArrayList<>(population.subList(population.size() - numNetworks, population.size()));
     }
 
     public static class TournamentSelection<E extends MutableNeuralNetwork> implements ParentSelector<E>{

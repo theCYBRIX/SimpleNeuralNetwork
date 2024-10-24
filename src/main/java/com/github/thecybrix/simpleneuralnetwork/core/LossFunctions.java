@@ -2,6 +2,8 @@ package com.github.thecybrix.simpleneuralnetwork.core;
 
 public final class LossFunctions {
 
+    private LossFunctions(){}
+
     public static double meanSquaredError(double[] predictedValues, double[] trueValues) throws ArrayIndexOutOfBoundsException, NullPointerException{
         double loss = 0;
 

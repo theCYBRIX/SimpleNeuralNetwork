@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -71,7 +72,11 @@ public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable
 
             @Override
             public boolean isApplicable(RequestPacket request) {
-                return request.getRequest().equalsIgnoreCase("exit");
+                try {
+                    return request.getRequest().equalsIgnoreCase("exit");
+                } catch (NoSuchElementException e) {
+                    return false;
+                }
             }
 
             @Override
