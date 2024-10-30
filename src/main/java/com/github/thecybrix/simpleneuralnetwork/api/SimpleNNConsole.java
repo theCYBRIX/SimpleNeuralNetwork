@@ -4,7 +4,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,13 +13,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.RequestHandler;
-import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.RequestPacket;
-import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.util.CallbackInvoker;
+import com.google.gson.JsonObject;
 
 public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable, CallbackInvoker<SimpleNNConsole<E>>{
     final private static Logger LOGGER = Logger.getLogger(SimpleNNConsole.class.getName());
@@ -68,19 +65,15 @@ public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable
         parentSelector = (parentSelector != null) ? parentSelector : ParentSelector.eliteSelection();
 
         ioHandler = new APIIOHandler<>(networkBuilder, parentSelector, executorService);
-        ioHandler.addRequestHandler(new RequestHandler<E>() {
+        ioHandler.addRequestHandler(new RequestHandler() {
 
             @Override
-            public boolean isApplicable(RequestPacket request) {
-                try {
-                    return request.getRequest().equalsIgnoreCase("exit");
-                } catch (NoSuchElementException e) {
-                    return false;
-                }
+            public String getKey() {
+                return "exit";
             }
 
             @Override
-            public ResponsePacket<E> handle(RequestPacket request) throws Exception {
+            public ResponsePacket handle(JsonObject request) throws Exception {
                 ioHandler.stop();
                 return ResponsePacket.ok();
             }

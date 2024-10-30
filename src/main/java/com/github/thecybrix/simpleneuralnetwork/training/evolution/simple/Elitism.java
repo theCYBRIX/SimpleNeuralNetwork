@@ -1,4 +1,4 @@
-package com.github.thecybrix.simpleneuralnetwork.training.simple;
+package com.github.thecybrix.simpleneuralnetwork.training.evolution.simple;
 
 import java.util.ArrayList;
 import java.util.Collection;

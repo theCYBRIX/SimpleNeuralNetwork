@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -9,9 +8,6 @@ import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
 import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizers;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
-import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
-import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
-import com.google.gson.reflect.TypeToken;
 
 public class TrainingServerTest extends TestingEnvironment {
 
@@ -19,10 +15,10 @@ public class TrainingServerTest extends TestingEnvironment {
     private static int numInputs = 14,
                        numOutputs = 4,
                        numHiddenLayers = 1,
-                       numNodesPerLayer = 28,
-                       networkSaveCount = 200;
+                       numNodesPerLayer = 28;
+                    //    networkSaveCount = 200;
 
-    private static String saveFile = "TestSaves\\testServerSave.json";
+    // private static String saveFile = "TestSaves\\testServerSave.json";
 
     private static SimpleNNServer<MutableNeuralNetwork> trainingServer;
     final private static String LOGGING_LEVELS = "{SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST}";
@@ -64,27 +60,27 @@ public class TrainingServerTest extends TestingEnvironment {
                         }
                         break;
                     
-                    case "save":
-                        try {
-                            if(input.length > 2){
-                                println("Invalid arguments. Usage: save [numNetworks]");
-                                break;
-                            }
-                            int numNetworks = (input.length == 1) ? networkSaveCount : Integer.parseInt(input[1]);
-                            saveToFile(saveFile, CustomGsonFactory.getInstance().toJson(trainingServer.getIoHandler().getBestNetworks(numNetworks), new TypeToken<List<MutableNeuralNetwork>>(){}.getType()));
-                            println("Successfully saved " + networkSaveCount + " networks to \"" + saveFile + "\"");
-                        } catch (NumberFormatException e){
-                            println("Invalid arguments. " + e.getMessage() + "\nUsage: save [numNetworks]");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            println("Failed to save networks.");
-                        }
+                    // case "save":
+                    //     try {
+                    //         if(input.length > 2){
+                    //             println("Invalid arguments. Usage: save [numNetworks]");
+                    //             break;
+                    //         }
+                    //         int numNetworks = (input.length == 1) ? networkSaveCount : Integer.parseInt(input[1]);
+                    //         saveToFile(saveFile, CustomGsonFactory.getInstance().toJson(trainingServer.getIoHandler().getBestNetworks(numNetworks), new TypeToken<List<MutableNeuralNetwork>>(){}.getType()));
+                    //         println("Successfully saved " + networkSaveCount + " networks to \"" + saveFile + "\"");
+                    //     } catch (NumberFormatException e){
+                    //         println("Invalid arguments. " + e.getMessage() + "\nUsage: save [numNetworks]");
+                    //     } catch (Exception e) {
+                    //         e.printStackTrace();
+                    //         println("Failed to save networks.");
+                    //     }
                         
-                        break;
+                    //     break;
 
-                    case "layout":
-                        println(NetworkLayout.of(trainingServer.getIoHandler().getBestNetworks(1).get(0)));
-                        break;
+                    // case "layout":
+                    //     println(NetworkLayout.of(trainingServer.getIoHandler().getBestNetworks(1).get(0)));
+                    //     break;
                     
                     case "clear":
                         clrscr();

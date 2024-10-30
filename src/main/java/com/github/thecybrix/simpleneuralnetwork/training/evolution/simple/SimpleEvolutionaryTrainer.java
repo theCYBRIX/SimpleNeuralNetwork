@@ -1,4 +1,4 @@
-package com.github.thecybrix.simpleneuralnetwork.training.simple;
+package com.github.thecybrix.simpleneuralnetwork.training.evolution.simple;
 
 import java.util.Comparator;
 import java.util.function.Supplier;

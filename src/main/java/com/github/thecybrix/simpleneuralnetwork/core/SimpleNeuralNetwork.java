@@ -23,7 +23,7 @@ public class SimpleNeuralNetwork {
 
 	final protected int OUTPUT_LAYER;
 
-	private HashMap<String, String> metadata = null;
+	private HashMap<String, Object> metadata = null;
 
 	protected double[][][] weights;
 	protected double[][] biases;
@@ -236,14 +236,14 @@ public class SimpleNeuralNetwork {
 	***************************************************** Getters ******************************************************
 	*******************************************************************************************************************/
 
-	public Map<String, String> getMetadata(){
+	public Map<String, Object> getMetadata(){
 		if (metadata == null)
 			return Collections.emptyMap();
 		else
 			return Collections.unmodifiableMap(metadata);
 	}
 
-	public Optional<String> getMetadata(String key){
+	public Optional<Object> getMetadata(String key){
 		if (metadata == null || !metadata.containsKey(key))
 			return Optional.empty();
 		else
@@ -326,16 +326,16 @@ public class SimpleNeuralNetwork {
 		metadata = null;
 	}
 
-	public String putMetadata(String key, String value){
+	public Object putMetadata(String key, Object value){
 		if (metadata == null)
 			metadata = new HashMap<>();
 		
 		return metadata.put(key, value);
 	}
 
-	public String removeMetadata(String key){
+	public Object removeMetadata(String key){
 		if(metadata == null) return null;
-		String value = metadata.remove(key);
+		Object value = metadata.remove(key);
 		if(metadata.size() == 0) metadata = null;
 		return value;
 	}

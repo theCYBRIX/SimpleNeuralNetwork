@@ -32,7 +32,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ValueMappingTrainer;
-import com.github.thecybrix.simpleneuralnetwork.training.simple.SimpleEvolutionaryTrainer;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleEvolutionaryTrainer;
 import com.google.gson.JsonParseException;
 
 final public class LearnSineFunction extends TestingEnvironment {
