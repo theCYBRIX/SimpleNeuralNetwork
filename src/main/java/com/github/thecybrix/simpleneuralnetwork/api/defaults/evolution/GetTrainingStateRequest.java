@@ -8,14 +8,14 @@ import com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution.Evolution
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
-public class TrainingStateHandler<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class GetTrainingStateRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
     final private static String DEFAULT_ENDPOINT = "get_training_state";
 
-    public TrainingStateHandler(EvolutionContext<E> context) {
+    public GetTrainingStateRequest(EvolutionContext<E> context) {
         super(context, DEFAULT_ENDPOINT);
     }
 
-    public TrainingStateHandler(EvolutionContext<E> context, String endpoint) {
+    public GetTrainingStateRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

@@ -9,14 +9,14 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-class NewGenerationHandler<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E>{
+class CreateNewGenerationRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E>{
     final private static String DEFAULT_ENDPOINT = "create_new_generation";
 
-    public NewGenerationHandler(EvolutionContext<E> context) {
+    public CreateNewGenerationRequest(EvolutionContext<E> context) {
         this(context, DEFAULT_ENDPOINT);
     }
 
-    public NewGenerationHandler(EvolutionContext<E> context, String endpoint) {
+    public CreateNewGenerationRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

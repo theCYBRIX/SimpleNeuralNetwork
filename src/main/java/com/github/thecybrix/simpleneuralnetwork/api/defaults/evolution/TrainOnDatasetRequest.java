@@ -6,14 +6,14 @@ import com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution.Evolution
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
-public class ApproximateDataHandler<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
-    final private static String DEFAULT_ENDPOINT = "approximate_data_set";
+public class TrainOnDatasetRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+    final private static String DEFAULT_ENDPOINT = "train_on_dataset";
 
-    public ApproximateDataHandler(EvolutionContext<E> context) {
+    public TrainOnDatasetRequest(EvolutionContext<E> context) {
         super(context, DEFAULT_ENDPOINT);
     }
 
-    public ApproximateDataHandler(EvolutionContext<E> context, String endpoint) {
+    public TrainOnDatasetRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

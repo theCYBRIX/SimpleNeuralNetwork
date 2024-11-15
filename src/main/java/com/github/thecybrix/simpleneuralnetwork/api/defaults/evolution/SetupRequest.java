@@ -13,16 +13,16 @@ import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-public class SetupHanlder<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
 
     final private static String DEFAULT_ENDPOINT = "setup";
     
 
-    public SetupHanlder(EvolutionContext<E> context) {
+    public SetupRequest(EvolutionContext<E> context) {
         super(context, DEFAULT_ENDPOINT);
     }
     
-    public SetupHanlder(EvolutionContext<E> context, String endpoint) {
+    public SetupRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

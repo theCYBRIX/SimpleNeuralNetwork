@@ -8,15 +8,15 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-public class ProcessInputsHandler<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class ProcessInputsRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
 
     final private static String DEFAULT_ENDPOINT = "process_inputs";
 
-    public ProcessInputsHandler(EvolutionContext<E> context) {
+    public ProcessInputsRequest(EvolutionContext<E> context) {
         super(context, DEFAULT_ENDPOINT);
     }
 
-    public ProcessInputsHandler(EvolutionContext<E> context, String endpoint) {
+    public ProcessInputsRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

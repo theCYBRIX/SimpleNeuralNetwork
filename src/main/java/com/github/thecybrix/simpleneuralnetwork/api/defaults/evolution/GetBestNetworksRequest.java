@@ -7,14 +7,14 @@ import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
-public class GetBestNetworksHandler<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class GetBestNetworksRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
     final private static String DEFAULT_ENDPOINT = "get_best_networks";
 
-    public GetBestNetworksHandler(EvolutionContext<E> context) {
+    public GetBestNetworksRequest(EvolutionContext<E> context) {
         super(context, DEFAULT_ENDPOINT);
     }
 
-    public GetBestNetworksHandler(EvolutionContext<E> context, String endpoint) {
+    public GetBestNetworksRequest(EvolutionContext<E> context, String endpoint) {
         super(context, endpoint);
     }
 

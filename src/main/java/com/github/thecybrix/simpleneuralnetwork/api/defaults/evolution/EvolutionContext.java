@@ -226,6 +226,10 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
         return metadataPacket;
     }
 
+    public HashMap<Integer, Map<String, Object>> getMetadata(){
+        return getMetadata(neuralNetworks.keySet().stream().collect(Collectors.toList()));
+    }
+
     public List<E> getBestNetworks(){
         synchronized(PREV_GEN_LOCK){
             return RequestHandlerUtils.unpackSuppliers(
@@ -302,14 +306,14 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
 
     public List<RequestHandler> getRequestHandlers(){
         return Arrays.asList(
-            new SetupHanlder<>(this),
-            new RandomizeNetworksHandler<>(this),
-            new ProcessInputsHandler<>(this),
-            new NewGenerationHandler<>(this),
-            new GetBestNetworksHandler<>(this),
-            new ApproximateDataHandler<>(this),
-            new StopTrainingHandler<>(this),
-            new TrainingStateHandler<>(this)
+            new SetupRequest<>(this),
+            new RandomizeNetworksRequest<>(this),
+            new ProcessInputsRequest<>(this),
+            new CreateNewGenerationRequest<>(this),
+            new GetBestNetworksRequest<>(this),
+            new TrainOnDatasetRequest<>(this),
+            new StopTrainingRequest<>(this),
+            new GetTrainingStateRequest<>(this)
         );
     }
     
