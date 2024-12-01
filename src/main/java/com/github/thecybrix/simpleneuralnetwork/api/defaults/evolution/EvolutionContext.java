@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -166,10 +167,64 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
         }
     }
 
-    public void createNewGeneration(HashMap<Integer, Double> scores){
+    public void createNewGeneration(HashMap<Integer, Double> scores) throws NoSuchElementException, NullPointerException {
         synchronized(CURRENT_GEN_LOCK){
-            for (Entry<Integer, Double> entry : scores.entrySet())
-                neuralNetworks.get(entry.getKey()).setScore(entry.getValue());
+            
+            @SuppressWarnings("unchecked")
+            ScoredNetwork<E>[] selectedNetworks = (ScoredNetwork<E>[]) new ScoredNetwork[scores.size()];
+            double[] networkScores = new double[scores.size()];
+            int selectionIndex = 0;
+            Iterator<Entry<Integer, Double>> entrySet = scores.entrySet().iterator();
+            Entry<Integer, Double> entry = null;
+            boolean invalidEntry = false;
+
+            while (entrySet.hasNext()){
+                entry = entrySet.next();
+                Double value = entry.getValue();
+                ScoredNetwork<E> network = neuralNetworks.get(entry.getKey());
+
+                if(network == null || value == null){
+                    invalidEntry = true;
+                    break;
+                }
+
+                selectedNetworks[selectionIndex] = network;
+                networkScores[selectionIndex] = value;
+                selectionIndex++;
+            }
+
+            if (invalidEntry){
+                ArrayList<Entry<Integer, Double>> invalidEntries = new ArrayList<>();
+                invalidEntries.add(entry);
+                
+                while (entrySet.hasNext()){
+                    entry = entrySet.next();
+                    Double value = entry.getValue();
+                    ScoredNetwork<E> network = neuralNetworks.get(entry.getKey());
+
+                    if(network == null || value == null)
+                        invalidEntries.add(entry);
+                }
+
+                StringBuilder errorMessage = new StringBuilder("Invalid network ID");
+                if(invalidEntries.size() > 1) errorMessage.append("s");
+                errorMessage.append(" provided. (ID, value)");
+
+                for (int i = 0; i < networkScores.length; i++) {
+                    entry = invalidEntries.get(i);
+                    errorMessage.append("\n(")
+                                .append(entry.getKey())
+                                .append(", ")
+                                .append(entry.getValue())
+                                .append(")");
+                }
+                throw new NoSuchElementException(errorMessage.toString());
+            }
+
+            
+            for (int i = 0; i < networkScores.length; i++)
+                selectedNetworks[i].setScore(networkScores[i]);
+            
 
             List<ScoredNetwork<E>> newGeneration = evolutionManager.createNewGeneration(
                 neuralNetworks.values()
