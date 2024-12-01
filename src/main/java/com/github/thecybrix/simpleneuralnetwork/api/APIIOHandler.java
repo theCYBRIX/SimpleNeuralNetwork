@@ -138,7 +138,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         } catch (Exception e) {
             LOGGER.warning("Failed to handle request: " + e.getClass().getSimpleName());
             logError(e);
-            return ResponsePacket.error(e.getClass().getSimpleName(), e.getMessage());
+            return ResponsePacket.error(e.getClass().getSimpleName(), e.getMessage(), RequestHandlerUtils.stackTraceToString(e));
         }
     }
     
