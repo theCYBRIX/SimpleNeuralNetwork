@@ -210,7 +210,7 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
                 if(invalidEntries.size() > 1) errorMessage.append("s");
                 errorMessage.append(" provided. (ID, value)");
 
-                for (int i = 0; i < networkScores.length; i++) {
+                for (int i = 0; i < invalidEntries.size(); i++) {
                     entry = invalidEntries.get(i);
                     errorMessage.append("\n(")
                                 .append(entry.getKey())
