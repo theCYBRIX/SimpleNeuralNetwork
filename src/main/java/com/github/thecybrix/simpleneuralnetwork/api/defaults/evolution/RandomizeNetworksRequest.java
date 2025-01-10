@@ -5,14 +5,19 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
 public class RandomizeNetworksRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
-    final private static String DEFAULT_ENDPOINT = "randomize_networks";
+    final private static String DEFAULT_ENDPOINT = "randomizeNetworks";
 
     public RandomizeNetworksRequest(EvolutionContext<E> context) {
-        super(context, DEFAULT_ENDPOINT);
+        this(context, DEFAULT_ENDPOINT);
     }
 
     public RandomizeNetworksRequest(EvolutionContext<E> context, String endpoint) {
-        super(context, endpoint);
+        super(context, endpoint,
+            //Required Properties
+            NO_PROPERTIES,
+            //Optional Properties
+            NO_PROPERTIES
+        );
     }
 
     @Override

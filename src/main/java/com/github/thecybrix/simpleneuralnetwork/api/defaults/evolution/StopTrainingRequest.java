@@ -5,14 +5,19 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
 public class StopTrainingRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
-    final private static String DEFAULT_ENDPOINT = "stop_training";
+    final private static String DEFAULT_ENDPOINT = "stopTraining";
 
     public StopTrainingRequest(EvolutionContext<E> context) {
-        super(context, DEFAULT_ENDPOINT);
+        this(context, DEFAULT_ENDPOINT);
     }
 
     public StopTrainingRequest(EvolutionContext<E> context, String endpoint) {
-        super(context, endpoint);
+        super(context, endpoint,
+            //Required Properties
+            null,
+            //Optional Properties
+            null
+        );
     }
 
     @Override

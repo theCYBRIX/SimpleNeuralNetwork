@@ -1,5 +1,8 @@
 package com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution;
 
+import java.util.Map;
+
+import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution.EvolutionContext.TrainingDataSet;
@@ -7,14 +10,22 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
 public class TrainOnDatasetRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
-    final private static String DEFAULT_ENDPOINT = "train_on_dataset";
+    final private static String DEFAULT_ENDPOINT = "trainOnDataset";
+    final private static String DATASET = "dataset";
 
     public TrainOnDatasetRequest(EvolutionContext<E> context) {
-        super(context, DEFAULT_ENDPOINT);
+        this(context, DEFAULT_ENDPOINT);
     }
 
     public TrainOnDatasetRequest(EvolutionContext<E> context, String endpoint) {
-        super(context, endpoint);
+        super(context, endpoint,
+            //Required Properties
+            Map.of(
+                DATASET, PropertyType.of(PropertyType.OBJECT, PropertyType.arrayOf(PropertyType.DOUBLE ,2), PropertyType.arrayOf(PropertyType.DOUBLE ,2))
+            ),
+            //Optional Properties
+            null
+        );
     }
 
     @Override
