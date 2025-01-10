@@ -90,7 +90,7 @@ public class ResponsePacket {
         return error(message, RequestHandlerUtils.stackTraceToString(e));
     }
     
-    public static ResponsePacket error(String message, String details){
+    public static <T> ResponsePacket error(String message, T details){
         HashMap<Object, Object> data = new HashMap<>(2);
         data.put(MESSAGE_KEY, message);
         data.put(DETAILS_KEY, details);

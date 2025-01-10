@@ -71,16 +71,29 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
     }
 
     //TODO: make redundant or inferable information optional
-    public void setup(int numNetworks, NetworkLayout layout, ParentSelection parentSelection, List<MutableNeuralNetwork> initialNetworks) throws NoSuchElementException, DimensionsMismatchException, NullPointerException {
+    public void setup(int numNetworks, NetworkLayout layout, ParentSelection parentSelection, List<MutableNeuralNetwork> initialNetworks, boolean createMetadata) throws NoSuchElementException, IllegalArgumentException, DimensionsMismatchException, NullPointerException {
 
-        if(initialNetworks != null)
-            NeuralNetworkTools.requireSameDimensions(initialNetworks);
+        if((initialNetworks == null || initialNetworks.isEmpty()) && layout == null){
+            throw new IllegalArgumentException("One of either initialNetworks or layout must be specified.");
+        
+        } else if(initialNetworks != null){
+            NeuralNetworkTools.requireSameLayout(initialNetworks);
+            MutableNeuralNetwork firstNetwork = initialNetworks.get(0);
+
+            if(layout == null){
+                layout = NetworkLayout.of(firstNetwork);
+
+            } else if(!NetworkLayout.of(firstNetwork).equals(layout)) {
+                throw new IllegalArgumentException("Networks given in initialNetworks do not match the specified layout.");
+            }
+        }
 
         parentSelector = RequestHandlerUtils.getParentSelector(parentSelection);
         
         NETWORK_BUILDER.reset().withLayout(layout);
+
         evolutionManager = new SimpleEvolutionManager<>(NETWORK_BUILDER::build, parentSelector);
-        evolutionManager.setCreateMetadata(true);
+        evolutionManager.setCreateMetadata(createMetadata);
 
         this.numNetworks = numNetworks;
 
@@ -221,13 +234,33 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
 
     public HashMap<Integer, Map<String, Object>> getMetadata(List<Integer> ids){
         HashMap<Integer, Map<String, Object>> metadataPacket = new HashMap<>(ids.size());
-        Map<Integer, Map<String, Object>> synchronizedMetadataPacket = Collections.synchronizedMap(metadataPacket);
-        ids.parallelStream().forEach(x -> synchronizedMetadataPacket.put(x, neuralNetworks.get(x).get().getMetadata()));
+        ids.stream().forEach(x -> metadataPacket.put(x, neuralNetworks.get(x).get().getMetadata()));
         return metadataPacket;
     }
 
     public HashMap<Integer, Map<String, Object>> getMetadata(){
         return getMetadata(neuralNetworks.keySet().stream().collect(Collectors.toList()));
+    }
+
+    public Map<Integer, E> getNetworks(){
+        synchronized(CURRENT_GEN_LOCK){
+            HashMap<Integer, E> networks = new HashMap<>(neuralNetworks.size());
+            neuralNetworks.entrySet().forEach(x -> networks.put(x.getKey(), x.getValue().get()));
+            return networks;
+        }
+    }
+
+    public Map<Integer, E> getNetworks(List<Integer> ids) throws IllegalArgumentException, NullPointerException {
+        Objects.requireNonNull(ids, "ID list is null.");
+        if(ids.isEmpty()) throw new IllegalArgumentException("ID list is empty.");
+        synchronized(CURRENT_GEN_LOCK){
+            Integer[] invalidIds = ids.stream().filter(x -> neuralNetworks.containsKey(x)).toArray(Integer[]::new);
+            if(invalidIds.length != 0)
+                throw new IllegalArgumentException(getInvalidIdsString(invalidIds));
+            HashMap<Integer, E> networks = new HashMap<>(ids.size());
+            ids.stream().forEach(x -> networks.put(x, neuralNetworks.get(x).get()));
+            return networks; 
+        }
     }
 
     public List<E> getBestNetworks(){
@@ -304,6 +337,10 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
         return datasetTrainer.getGeneration();
     }
 
+    public boolean isCreatingMetadata(){
+        return evolutionManager.isCreatingMetadata();
+    }
+
     public List<RequestHandler> getRequestHandlers(){
         return Arrays.asList(
             new SetupRequest<>(this),
@@ -311,10 +348,23 @@ public class EvolutionContext<E extends MutableNeuralNetwork> {
             new ProcessInputsRequest<>(this),
             new CreateNewGenerationRequest<>(this),
             new GetBestNetworksRequest<>(this),
+            new GetNetworkRequest<>(this),
             new TrainOnDatasetRequest<>(this),
             new StopTrainingRequest<>(this),
             new GetTrainingStateRequest<>(this)
         );
+    }
+
+    private String getInvalidIdsString(Integer... ids) throws NullPointerException, IllegalArgumentException{
+        Objects.requireNonNull(ids, "ID array is null.");
+        if(ids.length == 0) throw new IllegalArgumentException("ID array is empty.");
+        StringBuilder message = new StringBuilder("Requested invalid newtork IDs: ");
+        message.append("[").append(ids[0]);
+        for(int i = 0; i < ids.length; i++)
+            message.append(", ").append(ids[i]);
+        message.append("]");
+
+        return message.toString();
     }
     
     protected static class TrainingDataSet {

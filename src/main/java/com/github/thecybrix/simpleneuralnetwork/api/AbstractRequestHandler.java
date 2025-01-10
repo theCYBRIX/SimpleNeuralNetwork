@@ -1,4 +1,4 @@
-package com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution;
+package com.github.thecybrix.simpleneuralnetwork.api;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,38 +6,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Predicate;
 import java.util.Objects;
-
-import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler;
-import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
-import com.github.thecybrix.simpleneuralnetwork.api.RequestHandler;
-import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
-import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
-import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
+import java.util.function.Predicate;
 import com.google.gson.JsonObject;
 
-public abstract class AbstractEvolutionRequestHandler<E extends MutableNeuralNetwork> implements RequestHandler{
+public abstract class AbstractRequestHandler implements RequestHandler {
 
     final protected static Map<String, PropertyType> NO_PROPERTIES = null;
-
-    final private EvolutionContext<E> CONTEXT;
 
     final private Map<String, PropertyType> REQUIRED_PROPERTIES;
     final private Map<String, PropertyType> OPTIONAL_PROPERTIES;
 
-    final private String endpoint;
+    final private String ENDPOINT;
 
-    public AbstractEvolutionRequestHandler(EvolutionContext<E> context, String endpoint, Map<String, PropertyType> requiredProperties, Map<String, PropertyType> optionalProperties) {
-        CONTEXT = Objects.requireNonNull(context, "Context is null.");
+    public AbstractRequestHandler(String endpoint, Map<String, PropertyType> requiredProperties, Map<String, PropertyType> optionalProperties) {
         REQUIRED_PROPERTIES = (requiredProperties != null) ? Collections.unmodifiableMap(new HashMap<>(requiredProperties)) : Collections.emptyMap();
         OPTIONAL_PROPERTIES = (requiredProperties != null) ? Collections.unmodifiableMap(new HashMap<>(optionalProperties)) : Collections.emptyMap();
-        this.endpoint = Objects.requireNonNull(endpoint, "Endpoint is null.");
+        this.ENDPOINT = Objects.requireNonNull(endpoint, "Endpoint is null.");
     }
+
+    protected abstract ResponsePacket handleRequest(JsonObject request) throws Exception;
 
     @Override
     final public String getKey() {
-        return endpoint;
+        return ENDPOINT;
     }
     
     @Override
@@ -48,13 +40,7 @@ public abstract class AbstractEvolutionRequestHandler<E extends MutableNeuralNet
             return missingProperty(missing);
         }
 
-        return handle(request, CONTEXT);
-    }
-
-    public abstract ResponsePacket handle(JsonObject request, EvolutionContext<E> context)throws Exception ;
-
-    public String getMissingRequiredPropertyMessage(String property, PropertyType type){
-        return "Required property \"" + property + "\" (" + type + ") is missing.";
+        return handleRequest(request);
     }
 
     protected ResponsePacket missingProperty(String... stringNames) throws IllegalArgumentException {
@@ -85,7 +71,7 @@ public abstract class AbstractEvolutionRequestHandler<E extends MutableNeuralNet
         payload.put("properties", properties);
 
         Map<String, Object> requestPacket = new HashMap<>();
-        requestPacket.put(APIIOHandler.REQUEST_FIELDS[0], endpoint);
+        requestPacket.put(APIIOHandler.REQUEST_FIELDS[0], ENDPOINT);
         requestPacket.put(APIIOHandler.REQUEST_FIELDS[1], payload);
 
         return RequestHandlerUtils.GSON.toJson(requestPacket);
@@ -111,4 +97,5 @@ public abstract class AbstractEvolutionRequestHandler<E extends MutableNeuralNet
     public final Map<String, PropertyType> getOptionalProperties(){
         return OPTIONAL_PROPERTIES;
     }
+    
 }
