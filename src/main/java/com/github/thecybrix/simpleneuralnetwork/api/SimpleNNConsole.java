@@ -2,8 +2,10 @@ package com.github.thecybrix.simpleneuralnetwork.api;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,7 +70,7 @@ public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable
         ioHandler.addRequestHandler(new RequestHandler() {
 
             @Override
-            public String getKey() {
+            public String getEndpoint() {
                 return "exit";
             }
 
@@ -76,6 +78,21 @@ public class SimpleNNConsole<E extends MutableNeuralNetwork> implements Runnable
             public ResponsePacket handle(JsonObject request) throws Exception {
                 ioHandler.stop();
                 return ResponsePacket.ok();
+            }
+
+            @Override
+            public Map<String, PropertyType> getRequiredProperties() {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public Map<String, PropertyType> getOptionalProperties() {
+                return Collections.emptyMap();
+            }
+
+            @Override
+            public Map<String, PropertyType> getOutputProperties() {
+                return Collections.emptyMap();
             }
             
         });

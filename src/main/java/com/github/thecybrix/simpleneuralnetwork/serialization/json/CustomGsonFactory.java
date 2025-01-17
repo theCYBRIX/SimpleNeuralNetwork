@@ -8,6 +8,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout.NetworkLayer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 public final class CustomGsonFactory {
 
@@ -24,8 +25,10 @@ public final class CustomGsonFactory {
                     .registerTypeAdapter(NetworkLayer.class, new NetworkLayerAdapter())
                     .registerTypeAdapter(NetworkLayer[].class, new ArrayAdapter<>(NetworkLayer.class, NetworkLayer[]::new))
                     .registerTypeAdapter(NetworkLayout.class, new NetworkLayoutAdapter())
-                    .registerTypeAdapter(SimpleNeuralNetwork.class, new SimpleNeuralNetworkAdapter())
-                    .registerTypeAdapter(MutableNeuralNetwork.class, new MutableNeuralNetworkAdapter());
+                    .registerTypeAdapter(new TypeToken<SimpleNeuralNetwork>(){}.getType(), new SimpleNeuralNetworkAdapter())
+                    .registerTypeAdapter(SimpleNeuralNetwork[].class, new ArrayAdapter<>(SimpleNeuralNetwork.class, SimpleNeuralNetwork[]::new))
+                    .registerTypeAdapter(new TypeToken<MutableNeuralNetwork>(){}.getType(), new MutableNeuralNetworkAdapter())
+                    .registerTypeAdapter(MutableNeuralNetwork[].class, new ArrayAdapter<>(MutableNeuralNetwork.class, MutableNeuralNetwork[]::new));
         return gsonBuilder.create();
     }
 

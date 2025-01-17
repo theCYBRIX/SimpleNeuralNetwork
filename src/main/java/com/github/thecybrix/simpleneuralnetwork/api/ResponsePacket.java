@@ -91,14 +91,14 @@ public class ResponsePacket {
         return error(message, RequestHandlerUtils.stackTraceToString(e));
     }
     
-    public static ResponsePacket error(String message, String details){
+    public static ResponsePacket error(String message, Object details){
         HashMap<Object, Object> data = new HashMap<>(2);
         data.put(MESSAGE_KEY, message);
         data.put(DETAILS_KEY, details);
         return new ResponsePacket(Status.ERROR, data);
     }
     
-    public static ResponsePacket error(String message, String details, String stackTrace){
+    public static ResponsePacket error(String message, Object details, String stackTrace){
         HashMap<Object, Object> data = new HashMap<>(3);
         data.put(MESSAGE_KEY, message);
         data.put(DETAILS_KEY, details);
