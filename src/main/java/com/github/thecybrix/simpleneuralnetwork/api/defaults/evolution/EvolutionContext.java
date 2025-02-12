@@ -60,8 +60,9 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         parentSelector = RequestHandlerUtils.getParentSelector(parentSelection);
         
         NETWORK_BUILDER.reset().withLayout(layout);
+
         evolutionManager = new SimpleEvolutionManager<>(NETWORK_BUILDER::build, parentSelector);
-        evolutionManager.setCreateMetadata(true);
+        evolutionManager.setCreateMetadata(createMetadata);
 
         this.numNetworks = numNetworks;
 
@@ -212,6 +213,24 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         return Collections.unmodifiableMap(previousGeneration);
     }
 
+    public HashMap<Integer, Map<String, Object>> getMetadata(List<Integer> ids){
+        HashMap<Integer, Map<String, Object>> metadataPacket = new HashMap<>(ids.size());
+        ids.stream().forEach(x -> metadataPacket.put(x, neuralNetworks.get(x).get().getMetadata()));
+        return metadataPacket;
+    }
+
+    public HashMap<Integer, Map<String, Object>> getMetadata(){
+        return getMetadata(neuralNetworks.keySet().stream().collect(Collectors.toList()));
+    }
+
+    public Map<Integer, E> getNetworks(){
+        synchronized(CURRENT_GEN_LOCK){
+            HashMap<Integer, E> networks = new HashMap<>(neuralNetworks.size());
+            neuralNetworks.entrySet().forEach(x -> networks.put(x.getKey(), x.getValue().get()));
+            return networks;
+        }
+    }
+
     public List<E> getBestNetworks(){
         synchronized(PREV_GEN_LOCK){
             return RequestHandlerUtils.unpackSuppliers(
@@ -252,7 +271,7 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
     public Map<Integer, ScoredNetwork<E>> getCurrentGeneration(){
         return Collections.unmodifiableMap(neuralNetworks);
     }
-
+    
     public boolean isCreatingMetadata(){
         return evolutionManager.isCreatingMetadata();
     }
@@ -262,8 +281,24 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
             new SetupRequest<>(this),
             new RandomizeNetworksRequest<>(this),
             new CreateNewGenerationRequest<>(this),
-            new GetBestNetworksRequest<>(this)
+            new GetBestNetworksRequest<>(this),
+            new GetNetworkRequest<>(this),
+            new TrainOnDatasetRequest<>(this),
+            new StopTrainingRequest<>(this),
+            new GetTrainingStateRequest<>(this)
         );
+    }
+
+    private String getInvalidIdsString(Integer... ids) throws NullPointerException, IllegalArgumentException{
+        Objects.requireNonNull(ids, "ID array is null.");
+        if(ids.length == 0) throw new IllegalArgumentException("ID array is empty.");
+        StringBuilder message = new StringBuilder("Requested invalid newtork IDs: ");
+        message.append("[").append(ids[0]);
+        for(int i = 0; i < ids.length; i++)
+            message.append(", ").append(ids[i]);
+        message.append("]");
+
+        return message.toString();
     }
     
 }

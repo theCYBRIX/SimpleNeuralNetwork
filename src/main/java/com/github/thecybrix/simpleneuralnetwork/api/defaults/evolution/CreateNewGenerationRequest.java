@@ -38,6 +38,7 @@ class CreateNewGenerationRequest<E extends MutableNeuralNetwork> extends Abstrac
 
     @Override
     public ResponsePacket handle(JsonObject request, EvolutionContext<E> context) throws Exception{
+        RequestHandlerUtils.requireField(request, NETWORK_SCORES);
         HashMap<Integer, Double> networkScores = RequestHandlerUtils.GSON.fromJson(
             request.getAsJsonObject(NETWORK_SCORES), 
             new TypeToken<HashMap<Integer, Double>>(){}.getType()

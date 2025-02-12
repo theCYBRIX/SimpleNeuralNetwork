@@ -102,6 +102,10 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         createMetadata = enabled;
         updateNewGenerationFunction();
     }
+    
+    public boolean isCreatingMetadata(){
+        return createMetadata;
+    }
 
     private void updateNewGenerationFunction(){
         synchronized(newGenerationFunction){
