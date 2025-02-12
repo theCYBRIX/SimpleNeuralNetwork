@@ -282,23 +282,7 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
             new RandomizeNetworksRequest<>(this),
             new CreateNewGenerationRequest<>(this),
             new GetBestNetworksRequest<>(this),
-            new GetNetworkRequest<>(this),
-            new TrainOnDatasetRequest<>(this),
-            new StopTrainingRequest<>(this),
-            new GetTrainingStateRequest<>(this)
+            new GetMetadataRequest<>(this)
         );
     }
-
-    private String getInvalidIdsString(Integer... ids) throws NullPointerException, IllegalArgumentException{
-        Objects.requireNonNull(ids, "ID array is null.");
-        if(ids.length == 0) throw new IllegalArgumentException("ID array is empty.");
-        StringBuilder message = new StringBuilder("Requested invalid newtork IDs: ");
-        message.append("[").append(ids[0]);
-        for(int i = 0; i < ids.length; i++)
-            message.append(", ").append(ids[i]);
-        message.append("]");
-
-        return message.toString();
-    }
-    
 }
