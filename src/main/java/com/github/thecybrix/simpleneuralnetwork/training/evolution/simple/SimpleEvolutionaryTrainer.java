@@ -12,20 +12,29 @@ import com.github.thecybrix.simpleneuralnetwork.training.evolution.TrainingScena
 
 public class SimpleEvolutionaryTrainer<E extends MutableNeuralNetwork> extends EvolutionaryTrainer<E> {
 
+    final private static byte DEFAULT_LEARNING_RATE = 2;
+
     public SimpleEvolutionaryTrainer(int networksPerGeneration, Supplier<E> networkSupplier, TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
-        super(networksPerGeneration, createEvolutionManager(networkSupplier), trainingScenario);
+        this(networksPerGeneration, networkSupplier, trainingScenario, null);
     }
 
     public SimpleEvolutionaryTrainer(int networksPerGeneration, Supplier<E> networkSupplier, TrainingScenario<E> trainingScenario, Comparator<ScoredNetwork<E>> comparator) throws IllegalArgumentException, NullPointerException {
         super(networksPerGeneration, createEvolutionManager(networkSupplier), trainingScenario, comparator);
+        setDefaults();
     }
 
     public SimpleEvolutionaryTrainer(int networksPerGeneration, Supplier<E> networkSupplier, ParentSelector<E> parentSelector, TrainingScenario<E> trainingScenario) throws IllegalArgumentException, NullPointerException {
-        super(networksPerGeneration, createEvolutionManager(networkSupplier, parentSelector), trainingScenario);
+        this(networksPerGeneration, networkSupplier, parentSelector, trainingScenario, null);
     }
 
     public SimpleEvolutionaryTrainer(int networksPerGeneration, Supplier<E> networkSupplier, ParentSelector<E> parentSelector, TrainingScenario<E> trainingScenario, Comparator<ScoredNetwork<E>> comparator) throws IllegalArgumentException, NullPointerException {
         super(networksPerGeneration, createEvolutionManager(networkSupplier, parentSelector), trainingScenario, comparator);
+        setDefaults();
+    }
+
+    private void setDefaults(){
+        setLearningRate(DEFAULT_LEARNING_RATE);
+        attachCallback(new LearningRateDecay<>());
     }
 
     private static <E extends MutableNeuralNetwork> NetworkEvolutionManager<E> createEvolutionManager(Supplier<E> networkSupplier){

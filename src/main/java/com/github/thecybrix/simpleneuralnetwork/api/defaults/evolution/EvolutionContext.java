@@ -25,6 +25,7 @@ import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchExc
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.LearningRateDecay;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleEvolutionManager;
 
 public class EvolutionContext<E extends MutableNeuralNetwork> implements APIContext {
@@ -40,6 +41,11 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
     protected NetworkEvolutionManager<E> evolutionManager;
     protected ParentSelector<E> parentSelector;
     
+    protected double defaultLearningRate = 2;
+    protected double learningRate = defaultLearningRate;
+    protected float decayFactor = 0.99f;
+
+    protected int generation = 0;
     protected int numNetworks;
     protected HashMap<Integer, ScoredNetwork<E>> neuralNetworks = new HashMap<>();
 
@@ -65,6 +71,8 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         evolutionManager.setCreateMetadata(createMetadata);
 
         this.numNetworks = numNetworks;
+        generation = 0;
+        learningRate = defaultLearningRate;
 
         synchronized(PREV_GEN_LOCK){
             if(previousGeneration.size() > 0)
@@ -172,8 +180,13 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
                 .sorted()
                 .collect(Collectors.toList()),
                 
-                numNetworks
+                numNetworks,
+                learningRate
             );
+
+            generation++;
+
+            learningRate = LearningRateDecay.decay(defaultLearningRate, decayFactor, generation);
 
             synchronized(PREV_GEN_LOCK){
                 setCurrentGen(newGeneration);
@@ -189,6 +202,9 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
             if(neuralNetworks.size() < numNetworks)
                 addNetworks(evolutionManager.createRandomGeneration(numNetworks - neuralNetworks.size()));
         }
+
+        learningRate = defaultLearningRate;
+        generation = 0;
     }
 
     protected void setCurrentGen(List<ScoredNetwork<E>> networks){

@@ -19,7 +19,7 @@ public class RandomMutation<E extends MutableNeuralNetwork> extends SingleParent
     }
 
     public RandomMutation(double maxWeightDeviation, double maxBiasDeviation, Supplier<E> networkSupplier, String name) throws NullPointerException{
-        super(x -> new ScoredNetwork<>(NeuralNetworkTools.mutate(NeuralNetworkTools.copyWeightsAndBiases(x, networkSupplier), maxWeightDeviation, maxBiasDeviation)), name);
+        super((network, learningRate) -> new ScoredNetwork<>(NeuralNetworkTools.mutate(NeuralNetworkTools.copyWeightsAndBiases(network, networkSupplier), maxWeightDeviation * learningRate, maxBiasDeviation * learningRate)), name);
         Objects.requireNonNull(networkSupplier, "Network supplier is null.");
     }
 

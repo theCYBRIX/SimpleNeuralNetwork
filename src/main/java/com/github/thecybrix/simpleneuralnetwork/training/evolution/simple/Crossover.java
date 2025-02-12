@@ -11,7 +11,7 @@ import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.Simple
 public class Crossover<E extends MutableNeuralNetwork> extends TwoParentOffspringProvider<E>{
 
     public Crossover(Supplier<E> networkSupplier) throws NullPointerException {
-        super((x, y) -> new ScoredNetwork<>(NeuralNetworkTools.crossover(x, y, networkSupplier.get())), "crossover");
+        super((x, y, learningRate) -> new ScoredNetwork<>(NeuralNetworkTools.crossover(x, y, networkSupplier.get())), "crossover");
         Objects.requireNonNull(networkSupplier, "Network supplier is null.");
     }
     

@@ -10,7 +10,7 @@ import com.github.thecybrix.simpleneuralnetwork.training.evolution.OffspringGene
 
 public class Elitism<E extends MutableNeuralNetwork, T extends Comparable<T>> implements OffspringGenerator<E> {
     @Override
-    public List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, int numOffspring) {
+    public List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, int numOffspring, double learningRate) {
         if(numOffspring > parents.size()) throw new IllegalArgumentException("numOffspring is greater than parents.size()");
 
         ArrayList<ScoredNetwork<E>> elites = new ArrayList<>(numOffspring);

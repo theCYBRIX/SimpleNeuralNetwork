@@ -25,12 +25,14 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 
 	final private LinkedList<Consumer<EvolutionaryTrainer<E>>> CALLBACKS = new LinkedList<>();
 
-	final protected NetworkEvolutionManager<E> EVOLUTION_MANAGER;
-
 	final private TrainingScenario<E> TRAINING_SCENARIO;
+	
+	final protected NetworkEvolutionManager<E> EVOLUTION_MANAGER;
  
 	protected int generation, numNetworks;
 	protected List<ScoredNetwork<E>> neuralNetworks;
+    private double initialLearningRate = 1;
+	private double learningRate = 1;
     private Comparator<ScoredNetwork<E>> comparator;
 
 
@@ -60,6 +62,8 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 			keepAlive = true;
 			running = true;
 			runningThread = Thread.currentThread();
+
+			learningRate = initialLearningRate;
 			
 			if (neuralNetworks.size() < numNetworks)
 				neuralNetworks.addAll(EVOLUTION_MANAGER.createRandomGeneration(numNetworks - neuralNetworks.size()));
@@ -72,7 +76,7 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 				
 				previousGeneration = List.copyOf(neuralNetworks);
 
-				neuralNetworks = EVOLUTION_MANAGER.createNewGeneration(neuralNetworks, numNetworks);
+				neuralNetworks = EVOLUTION_MANAGER.createNewGeneration(neuralNetworks, numNetworks, learningRate);
 
 				processCallbacks(this);
 
@@ -105,7 +109,23 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 	public void addAllScored(Collection<? extends ScoredNetwork<E>> networks) throws NullPointerException{
 		neuralNetworks.addAll(networks);
 	}
+
+    public double getLearningRate() {
+        return learningRate;
+    }
+
+    public void setLearningRate(double learningRate) {
+        this.learningRate = learningRate;
+    }
     
+    public double getInitialLearningRate() {
+		return initialLearningRate;
+	}
+
+	public void setInitialLearningRate(double rate) {
+		this.initialLearningRate = rate;
+	}
+
 	public int getGeneration() {
 		return generation;
 	}
@@ -151,4 +171,5 @@ public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements Auto
 	public List<Consumer<EvolutionaryTrainer<E>>> getCallbackList() {
 		return CALLBACKS;
 	}
+
 }
