@@ -6,16 +6,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.github.thecybrix.simpleneuralnetwork.api.AbstractContextualRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils.ParentSelection;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
+import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<EvolutionContext<E>> {
 
     final private static String DEFAULT_ENDPOINT = "setup";
     final private static String NUM_NETWORKS = "numNetworks";
@@ -39,9 +41,13 @@ public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractEvolut
             ),
             //Optional Properties
             Map.of(
-                LAYOUT, PropertyType.of("NetworkLayout"),
+                LAYOUT, PropertyType.of(NetworkLayout.class),
                 CREATE_METADATA, PropertyType.BOOLEAN,
-                INITIAL_NETWORKS, PropertyType.arrayOf("SimpleNeuralNetwork")
+                INITIAL_NETWORKS, PropertyType.of(SimpleNeuralNetwork[].class)
+            ),
+            //Response Properties
+            Map.of(
+                NETWORK_IDS, PropertyType.arrayOf(PropertyType.INTEGER)
             )
         );
     }
@@ -53,7 +59,7 @@ public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractEvolut
         ParentSelection parentSelection;
         NetworkLayout layout = null;
         List<MutableNeuralNetwork> initialNetworks = null;
-        boolean createMetadata = false;
+        boolean createMetadata = true;
 
         Objects.requireNonNull(request, "request is null");
 
@@ -62,13 +68,13 @@ public class SetupRequest<E extends MutableNeuralNetwork> extends AbstractEvolut
         numNetworks = request.get(NUM_NETWORKS).getAsInt();
         
         parentSelection = ParentSelection.valueOf(request.get(PARENT_SELECTOR).getAsString());
-
+        
         if(request.has(LAYOUT))
             layout = RequestHandlerUtils.GSON.fromJson(request.getAsJsonObject(LAYOUT), NetworkLayout.class);
         
         if(request.has(CREATE_METADATA))
-            createMetadata = request.get(CREATE_METADATA).getAsBoolean();
-        
+            createMetadata= request.get(CREATE_METADATA).getAsBoolean();
+
         if(request.has(INITIAL_NETWORKS))
             initialNetworks = RequestHandlerUtils.GSON.fromJson(request.get(INITIAL_NETWORKS), new TypeToken<ArrayList<MutableNeuralNetwork>>(){}.getType());
 

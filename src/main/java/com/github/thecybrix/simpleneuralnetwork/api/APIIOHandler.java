@@ -2,9 +2,11 @@ package com.github.thecybrix.simpleneuralnetwork.api;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import java.util.logging.ConsoleHandler;
@@ -16,6 +18,8 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 import com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution.EvolutionContext;
+import com.github.thecybrix.simpleneuralnetwork.api.defaults.idmanager.NetworkIDManager;
+import com.github.thecybrix.simpleneuralnetwork.api.defaults.valuemapping.ValueMappingContext;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
@@ -82,8 +86,14 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
     }
 
     public APIIOHandler(NeuralNetworkBuilder<E> networkBuilder, ParentSelector<E> parentSelector, ExecutorService executorService) throws IllegalArgumentException, NullPointerException {
-        EvolutionContext<E> evolutionContext = new EvolutionContext<>(networkBuilder, parentSelector, executorService);
+        NetworkIDManager<E> newtorkIdManager = new NetworkIDManager<>(executorService);
+        EvolutionContext<E> evolutionContext = new EvolutionContext<>(newtorkIdManager, networkBuilder, parentSelector);
+        ValueMappingContext<E> valueMappingContextContext = new ValueMappingContext<>(newtorkIdManager, networkBuilder, parentSelector);
+        addRequestHandlers(newtorkIdManager.getRequestHandlers());
         addRequestHandlers(evolutionContext.getRequestHandlers());
+        addRequestHandlers(valueMappingContextContext.getRequestHandlers());
+
+        addRequestHandler(new EndpointsRequest(this));
     }
 
 
@@ -98,7 +108,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
 
                 String request = reader.readString();
                 LOGGER.finest(() -> "Request received:\n" + request);
-
+                
                 String response = RequestHandlerUtils.GSON.toJson(handleRequest(request));
                 LOGGER.finest(() -> "Response packet:\n" + response);
 
@@ -138,24 +148,36 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         } catch (Exception e) {
             LOGGER.warning("Failed to handle request: " + e.getClass().getSimpleName());
             logError(e);
-            return ResponsePacket.error(e.getClass().getSimpleName(), e.getMessage());
+            return ResponsePacket.error(e.getClass().getSimpleName(), e.getMessage(), RequestHandlerUtils.stackTraceToString(e));
         }
+    }
+
+    public int getRequestHandlerCount(){
+        return REQUEST_HANDLERS.size();
+    }
+
+    public Collection<RequestHandler> getRequestHandlers(){
+        return REQUEST_HANDLERS.values();
+    }
+
+    public Optional<RequestHandler> getRequestHandler(String endpooint){
+        return Optional.ofNullable(REQUEST_HANDLERS.get(endpooint));
     }
     
     public void addRequestHandler(RequestHandler handler) throws NullPointerException {
         if(handler == null) throw new NullPointerException("Request handler is null.");
-        REQUEST_HANDLERS.put(handler.getKey(), handler);
+        REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }
 
     public void addRequestHandlers(List<RequestHandler> handlers) throws NullPointerException {
         if(handlers == null) throw new NullPointerException("Request handlers is null.");
         handlers.parallelStream().filter(x -> x != null);
         for (RequestHandler handler : handlers)
-            REQUEST_HANDLERS.put(handler.getKey(), handler);
+            REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }
     
     public boolean removeRequestHandler(RequestHandler handler){
-        if(REQUEST_HANDLERS.remove(handler.getKey(), handler)) return true;
+        if(REQUEST_HANDLERS.remove(handler.getEndpoint(), handler)) return true;
         if(REQUEST_HANDLERS.containsValue(handler))
             return REQUEST_HANDLERS.values().remove(handler);
         return false;

@@ -25,29 +25,37 @@ public final class PropertyType {
 
     private PropertyType(String typeName, String... genericTypes) throws IllegalArgumentException, NullPointerException {
         Objects.requireNonNull(typeName, "Type name is null.");
-        typeName += getGenericsString(genericTypes);
+        
+        if(genericTypes.length > 0){
+            int arrayStartIndex = typeName.indexOf('[');
+            if(arrayStartIndex >= 0){
+                String arrayChars = typeName.substring(arrayStartIndex, typeName.length());
+                typeName = typeName.substring(0, arrayStartIndex) + getGenericsString(genericTypes) + arrayChars;
+            } else {
+                typeName += getGenericsString(genericTypes);
+            }
+        }
+
         READABLE_NAME = validateTypeName(typeName);
     }
 
     private PropertyType(String typeName, PropertyType... genericTypes) throws IllegalArgumentException, NullPointerException {
-        Objects.requireNonNull(typeName, "Type name is null.");
-        typeName += getGenericsString(genericTypes);
-        READABLE_NAME = validateTypeName(typeName);
+        this(typeName, Arrays.stream(genericTypes).map(x -> x.toString()).toArray(String[]::new));
     }
 
     public String toString(){
         return READABLE_NAME;
     }
 
-    public static PropertyType of(String typeName) throws IllegalArgumentException, NullPointerException {
-        return new PropertyType(typeName);
+    public static PropertyType of(Class<?> classOfT) throws IllegalArgumentException, NullPointerException {
+        return new PropertyType(classOfT.getSimpleName());
+    }
+
+    public static PropertyType of(Class<?> classOfT, Class<?>... genericTypes) throws IllegalArgumentException, NullPointerException {
+        return new PropertyType(classOfT.getSimpleName(), Arrays.stream(genericTypes).map(x -> x.getSimpleName()).toArray(String[]::new));
     }
 
     public static PropertyType of(String typeName, String... genericTypes) throws IllegalArgumentException, NullPointerException {
-        return new PropertyType(typeName, genericTypes);
-    }
-
-    public static PropertyType of(String typeName, PropertyType... genericTypes) throws IllegalArgumentException, NullPointerException {
         return new PropertyType(typeName, genericTypes);
     }
 
@@ -64,16 +72,16 @@ public final class PropertyType {
         return new PropertyType(builder.toString());
     }
 
+    public static PropertyType arrayOf(String typeName) throws IllegalArgumentException, NullPointerException {
+        return arrayOf(typeName, 1);
+    }
+
     public static PropertyType arrayOf(PropertyType type) throws IllegalArgumentException, NullPointerException {
         return arrayOf(type.toString(), 1);
     }
 
     public static PropertyType arrayOf(PropertyType type, int dimensions) throws IllegalArgumentException, NullPointerException {
         return arrayOf(type.toString(), dimensions); 
-    }
-
-    public static PropertyType arrayOf(String typeName) throws IllegalArgumentException, NullPointerException {
-        return arrayOf(typeName, 1);
     }
 
     public static PropertyType arrayOf(String typeName, PropertyType... genericTypes) throws IllegalArgumentException, NullPointerException {
@@ -93,11 +101,11 @@ public final class PropertyType {
     }
 
     public static PropertyType mapOf(PropertyType keyType, PropertyType valueType) throws IllegalArgumentException, NullPointerException {
-        return new PropertyType("Map", keyType, valueType);
+        return of(MAP, keyType, valueType);
     }
 
     public static PropertyType mapOf(String keyType, String valueType) throws IllegalArgumentException, NullPointerException {
-        return new PropertyType("Map", keyType, valueType);
+        return of(MAP.toString(), keyType, valueType);
     }
 
     private static String validateTypeName(String name) throws IllegalArgumentException, NullPointerException {
@@ -179,11 +187,6 @@ public final class PropertyType {
 
     private static void illegalNameFormatting(String name, int charIndex) throws IllegalArgumentException {
         throw new IllegalArgumentException("\"" + name + "\" is not a valid type name. Error on character \"" + name.charAt(charIndex) + "\" at index " + charIndex + ".");
-    }
-
-    static private String getGenericsString(PropertyType[] genericTypes){
-        validateGenericTypeArray(genericTypes);
-        return getGenericsStringUnchecked(genericTypes);
     }
 
     static private String getGenericsString(String[] genericTypes) throws IllegalArgumentException, NullPointerException {

@@ -28,6 +28,11 @@ public class ScoredNetwork<E extends SimpleNeuralNetwork> implements Comparable<
         setScore(score);
     }
 
+    public ScoredNetwork(ScoredNetwork<E> other) {
+        this(Objects.requireNonNull(other, "other is null.").network);
+        setScore(other.score);
+    }
+
     @Override
     public E get() {
         return network;
@@ -50,7 +55,7 @@ public class ScoredNetwork<E extends SimpleNeuralNetwork> implements Comparable<
         this.score = Objects.requireNonNull(score, "score (OptionalDouble) is null");
     }
 
-    public void removeScore(){
+    public void clearScore(){
         this.score = OptionalDouble.empty();
     }
 

@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.github.thecybrix.simpleneuralnetwork.api.AbstractContextualRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
@@ -11,7 +12,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-class CreateNewGenerationRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E>{
+class CreateNewGenerationRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<EvolutionContext<E>>{
     final private static String DEFAULT_ENDPOINT = "createNewGeneration";
     final private static String NETWORK_SCORES = "networkScores";
     final private static String NETWORK_IDS = "networkIds";
@@ -27,7 +28,11 @@ class CreateNewGenerationRequest<E extends MutableNeuralNetwork> extends Abstrac
                 NETWORK_SCORES, PropertyType.mapOf(PropertyType.INTEGER, PropertyType.DOUBLE)
             ),
             //Optional Properties
-            NO_PROPERTIES
+            NO_PROPERTIES,
+            //Response Properties
+            Map.of(
+                NETWORK_IDS, PropertyType.arrayOf(PropertyType.INTEGER)
+            )
         );
     }
 

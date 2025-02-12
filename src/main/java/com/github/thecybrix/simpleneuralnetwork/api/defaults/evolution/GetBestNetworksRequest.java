@@ -3,13 +3,15 @@ package com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution;
 import java.util.Collections;
 import java.util.Map;
 
+import com.github.thecybrix.simpleneuralnetwork.api.AbstractContextualRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
+import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.google.gson.JsonObject;
 
-public class GetBestNetworksRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E> {
+public class GetBestNetworksRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<EvolutionContext<E>> {
     final private static String DEFAULT_ENDPOINT = "getBestNetworks";
     final private static String NUM_REQUESTED = "numRequested";
     final private static String NETWORKS = "networks";
@@ -25,7 +27,11 @@ public class GetBestNetworksRequest<E extends MutableNeuralNetwork> extends Abst
                 NUM_REQUESTED, PropertyType.INTEGER
             ),
             //Optional Properties
-            NO_PROPERTIES
+            NO_PROPERTIES,
+            //Response Properties
+            Map.of(
+                NETWORKS, PropertyType.of(SimpleNeuralNetwork[].class)
+            )
         );
     }
 

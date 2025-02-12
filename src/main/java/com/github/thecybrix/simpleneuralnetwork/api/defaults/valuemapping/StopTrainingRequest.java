@@ -1,18 +1,18 @@
-package com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution;
+package com.github.thecybrix.simpleneuralnetwork.api.defaults.valuemapping;
 
 import com.github.thecybrix.simpleneuralnetwork.api.AbstractContextualRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 
-public class RandomizeNetworksRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<EvolutionContext<E>> {
-    final private static String DEFAULT_ENDPOINT = "randomizeNetworks";
+public class StopTrainingRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<ValueMappingContext<E>> {
+    final private static String DEFAULT_ENDPOINT = "stopTraining";
 
-    public RandomizeNetworksRequest(EvolutionContext<E> context) {
+    public StopTrainingRequest(ValueMappingContext<E> context) {
         this(context, DEFAULT_ENDPOINT);
     }
 
-    public RandomizeNetworksRequest(EvolutionContext<E> context, String endpoint) {
+    public StopTrainingRequest(ValueMappingContext<E> context, String endpoint) {
         super(context, endpoint,
             //Required Properties
             NO_PROPERTIES,
@@ -24,8 +24,8 @@ public class RandomizeNetworksRequest<E extends MutableNeuralNetwork> extends Ab
     }
 
     @Override
-    public ResponsePacket handle(JsonObject request, EvolutionContext<E> context) throws Exception {
-        context.randomizeNetworks();
+    public ResponsePacket handle(JsonObject request, ValueMappingContext<E> context) throws Exception {
+        context.stopTraining();
         return ResponsePacket.ok();
     }
     

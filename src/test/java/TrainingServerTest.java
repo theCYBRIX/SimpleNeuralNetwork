@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.github.thecybrix.simpleneuralnetwork.api.APIIOHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.SimpleNNServer;
 import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
 import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizers;
@@ -35,7 +36,7 @@ public class TrainingServerTest extends TestingEnvironment {
 
         BufferedReader console = new BufferedReader(System.console().reader());
         boolean keepActive = true;
-
+        
         try {
             while(keepActive){
                 String[] input = console.readLine().trim().split(" ");
@@ -50,10 +51,13 @@ public class TrainingServerTest extends TestingEnvironment {
                                 println("Invalid arguments. Usage: logging " + LOGGING_LEVELS);
                                 break;
                             }
-                            String level = input[1].toUpperCase();
+                            String levelString = input[1].toUpperCase();
+                            Level level = Level.parse(levelString);
                             Logger logger = Logger.getLogger(SimpleNNServer.class.getName());
-                            logger.getHandlers()[1].setLevel(Level.parse(level));
-                            println("Logging level set to \"" + level + "\"");
+                            logger.getHandlers()[1].setLevel(level);
+                            logger = Logger.getLogger(APIIOHandler.class.getName());
+                            logger.getHandlers()[1].setLevel(level);
+                            println("Logging level set to \"" + levelString + "\"");
                             
                         } catch (Exception e) {
                             println("Invalid arguments. " + e.getMessage() + "\nUsage: logging " + LOGGING_LEVELS);

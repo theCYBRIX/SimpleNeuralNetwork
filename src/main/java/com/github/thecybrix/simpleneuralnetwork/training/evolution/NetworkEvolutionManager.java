@@ -29,6 +29,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
     final private CompoundRatio NETWORK_DISTRIBUTION;
 
     private boolean parallel = false, createMetadata = false;
+
     private BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>> newGenerationFunction = this::linearNewGeneration;
     private ParentSelector<E> parentSelector;
 
@@ -101,10 +102,6 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         createMetadata = enabled;
         updateNewGenerationFunction();
     }
-    
-    public boolean isCreatingMetadata(){
-        return createMetadata;
-    }
 
     private void updateNewGenerationFunction(){
         synchronized(newGenerationFunction){
@@ -122,6 +119,10 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 
     public boolean isParallel() {
         return parallel;
+    }
+
+    public boolean isCreatingMetadata() {
+        return createMetadata;
     }
 
     public void setParentFraction(Fraction fraction) throws NullPointerException {

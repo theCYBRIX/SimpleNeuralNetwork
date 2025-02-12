@@ -36,7 +36,7 @@ public class PropertyTypeTest {
             validTypes.add(t);
         
             // 6. Nested generics
-            t = PropertyType.of("Map", PropertyType.of("String"), PropertyType.of("List", "Integer"));
+            t = PropertyType.of(PropertyType.of("Map"), PropertyType.of("String"), PropertyType.of("List", "Integer"));
             validTypes.add(t);
         
             // 7. Array of primitives
@@ -79,6 +79,8 @@ public class PropertyTypeTest {
             invalidTypes.add("MyClas]s<AnotherClass>"); // 8. Closing bracking within class name
             invalidTypes.add(null);                   // 9. Null string
             invalidTypes.add("Map<String");           // 10. Unterminated generic
+            invalidTypes.add("Map<String, Integer>[][]<String>"); // 11. Invalid array parameter
+            invalidTypes.add("Map<String, String><String>"); // 12. Invalid generic typing
         
             for (String invalid : invalidTypes) {
                 try {

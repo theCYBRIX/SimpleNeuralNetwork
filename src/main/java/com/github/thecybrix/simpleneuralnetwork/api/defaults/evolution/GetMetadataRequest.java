@@ -1,8 +1,10 @@
 package com.github.thecybrix.simpleneuralnetwork.api.defaults.evolution;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.github.thecybrix.simpleneuralnetwork.api.AbstractContextualRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
 import com.github.thecybrix.simpleneuralnetwork.api.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.api.ResponsePacket;
@@ -10,9 +12,10 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-public class GetMetadataRequest<E extends MutableNeuralNetwork> extends AbstractEvolutionRequestHandler<E>{
+public class GetMetadataRequest<E extends MutableNeuralNetwork> extends AbstractContextualRequestHandler<EvolutionContext<E>>{
     final private static String DEFAULT_ENDPOINT = "getMetadata";
     final private static String NETWORK_IDS_KEY = "networkIds";
+    final private static String METADATA = "metadata";
     
     public GetMetadataRequest(EvolutionContext<E> context) {
         this(context, DEFAULT_ENDPOINT);
@@ -25,6 +28,10 @@ public class GetMetadataRequest<E extends MutableNeuralNetwork> extends Abstract
             //Optional Properties
             Map.of(
                 NETWORK_IDS_KEY, PropertyType.mapOf(PropertyType.INTEGER, PropertyType.mapOf(PropertyType.STRING, PropertyType.OBJECT))
+            ),
+            //Response Properties
+            Map.of(
+                NETWORK_IDS_KEY, PropertyType.mapOf(PropertyType.INTEGER, PropertyType.mapOf(PropertyType.STRING, PropertyType.OBJECT))
             )
         );
     } 
@@ -34,12 +41,12 @@ public class GetMetadataRequest<E extends MutableNeuralNetwork> extends Abstract
         Map<Integer, Map<String, Object>> metadataPacket;
         if(request.has(NETWORK_IDS_KEY)){
             List<Integer> networkIDs = RequestHandlerUtils.GSON.fromJson(request.get(NETWORK_IDS_KEY), new TypeToken<List<Integer>>(){}.getType());
-            metadataPacket = context.getMetadata(networkIDs);
+            metadataPacket = context.NETWORK_MANAGER.getMetadata(networkIDs);
         } else {
-            metadataPacket = context.getMetadata();
+            metadataPacket = context.NETWORK_MANAGER.getMetadata();
         }
         
-        return ResponsePacket.message(metadataPacket);
+        return ResponsePacket.message(Collections.singletonMap(METADATA, metadataPacket));
     }
     
 }

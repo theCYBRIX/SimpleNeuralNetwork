@@ -8,7 +8,8 @@ import java.util.Map;
 public class ResponsePacket {
 
     final public static String MESSAGE_KEY = "message",
-                               DETAILS_KEY = "details";
+                               DETAILS_KEY = "details",
+                               STACK_TRACE_KEY = "stackTrace";
 
     public enum Status {
         OK,
@@ -90,10 +91,18 @@ public class ResponsePacket {
         return error(message, RequestHandlerUtils.stackTraceToString(e));
     }
     
-    public static <T> ResponsePacket error(String message, T details){
+    public static ResponsePacket error(String message, Object details){
         HashMap<Object, Object> data = new HashMap<>(2);
         data.put(MESSAGE_KEY, message);
         data.put(DETAILS_KEY, details);
+        return new ResponsePacket(Status.ERROR, data);
+    }
+    
+    public static ResponsePacket error(String message, Object details, String stackTrace){
+        HashMap<Object, Object> data = new HashMap<>(3);
+        data.put(MESSAGE_KEY, message);
+        data.put(DETAILS_KEY, details);
+        data.put(STACK_TRACE_KEY, stackTrace);
         return new ResponsePacket(Status.ERROR, data);
     }
 }
