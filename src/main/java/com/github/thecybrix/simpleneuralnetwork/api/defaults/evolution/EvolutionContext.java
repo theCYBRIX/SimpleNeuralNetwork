@@ -160,7 +160,6 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
                 }
                 throw new NoSuchElementException(errorMessage.toString());
             }
-
             
             for (int i = 0; i < networkScores.length; i++)
                 selectedNetworks[i].setScore(networkScores[i]);
@@ -202,7 +201,8 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
 
     private void setPrevGen(Map<Integer, ScoredNetwork<E>> networks){
         synchronized(PREV_GEN_LOCK){
-            NETWORK_MANAGER.removeAll(previousGeneration.keySet());
+            if(!previousGeneration.isEmpty())
+                NETWORK_MANAGER.removeAll(previousGeneration.keySet());
               
             previousGeneration = networks;
         }

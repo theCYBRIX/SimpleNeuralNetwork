@@ -108,7 +108,7 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
 
                 String request = reader.readString();
                 LOGGER.finest(() -> "Request received:\n" + request);
-
+                
                 String response = RequestHandlerUtils.GSON.toJson(handleRequest(request));
                 LOGGER.finest(() -> "Response packet:\n" + response);
 
