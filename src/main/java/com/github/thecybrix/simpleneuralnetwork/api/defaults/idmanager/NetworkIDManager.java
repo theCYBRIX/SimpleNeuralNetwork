@@ -133,7 +133,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
         Objects.requireNonNull(ids, "ID list is null.");
         if(ids.isEmpty()) throw new IllegalArgumentException("ID list is empty.");
 
-        Integer[] invalidIds = ids.stream().filter(x -> neuralNetworks.containsKey(x)).toArray(Integer[]::new);
+        Integer[] invalidIds = ids.stream().filter(x -> !neuralNetworks.containsKey(x)).toArray(Integer[]::new);
         if(invalidIds.length != 0)
             throw new IllegalArgumentException(getInvalidIdString(invalidIds));
         HashMap<Integer, E> networks = new HashMap<>(ids.size());
