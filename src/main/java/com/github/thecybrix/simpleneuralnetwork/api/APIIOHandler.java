@@ -24,8 +24,8 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.util.CallbackInvoker;
-import com.github.thecybrix.util.LELengthPrefixedReader;
-import com.github.thecybrix.util.LELengthPrefixedWriter;
+import com.github.thecybrix.util.LengthPrefixedReader;
+import com.github.thecybrix.util.LengthPrefixedWriter;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -96,21 +96,26 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         addRequestHandler(new EndpointsRequest(this));
     }
 
-
     public void handle(InputStream input, OutputStream output) throws InterruptedException {
+        handle(input, output, true);
+    }
+
+    public void handle(InputStream input, OutputStream output, boolean bigEndian) throws InterruptedException {
         try(
-            LELengthPrefixedReader reader = new LELengthPrefixedReader(input);
-            LELengthPrefixedWriter writer = new LELengthPrefixedWriter(output);
+            LengthPrefixedReader reader = new LengthPrefixedReader(input, bigEndian);
+            LengthPrefixedWriter writer = new LengthPrefixedWriter(output, bigEndian);
         ) {
             keepAlive = true;
             while(keepAlive){
                 if(Thread.interrupted()) throw new InterruptedException();
 
                 String request = reader.readString();
-                LOGGER.finest(() -> "Request received:\n" + request);
+                if(LOGGER.isLoggable(Level.FINEST))
+                    LOGGER.finest("Request received:\n" + request);
                 
                 String response = RequestHandlerUtils.GSON.toJson(handleRequest(request));
-                LOGGER.finest(() -> "Response packet:\n" + response);
+                if(LOGGER.isLoggable(Level.FINEST))
+                    LOGGER.finest("Response packet:\n" + response);
 
                 writer.writeString(response);
                 writer.flush();
