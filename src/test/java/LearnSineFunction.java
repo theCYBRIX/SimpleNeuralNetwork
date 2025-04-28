@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYChartBuilder;
+import org.knowm.xchart.style.AxesChartStyler;
+import org.knowm.xchart.style.theme.GGPlot2Theme;
 
 import com.github.thecybrix.simpleneuralnetwork.core.ActivationFunctions;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
@@ -57,6 +59,10 @@ final public class LearnSineFunction extends TestingEnvironment {
     final private Console CONSOLE;
     private XYChart chart;
     private SwingWrapper<XYChart> chartWrapper;
+
+
+    private int numXTicks = 5;
+    private int numYTicks = 5;
 
     private static long frameTime = fpsLimit <= 0 ? 0l : Math.round(1000 / fpsLimit);
 
@@ -95,6 +101,36 @@ final public class LearnSineFunction extends TestingEnvironment {
                     .yAxisTitle("y")
                     .build();
 
+        chart.getStyler().setTheme(new GGPlot2Theme());
+        // Customize styling for a dark theme
+        AxesChartStyler styler = (AxesChartStyler) chart.getStyler();
+        styler.setChartBackgroundColor(java.awt.Color.BLACK);
+        styler.setPlotBackgroundColor(java.awt.Color.DARK_GRAY);
+        styler.setChartFontColor(java.awt.Color.WHITE);
+        styler.setAxisTickLabelsColor(java.awt.Color.WHITE);
+        styler.setXAxisTitleColor(java.awt.Color.LIGHT_GRAY);
+        styler.setYAxisTitleColor(java.awt.Color.LIGHT_GRAY);
+        styler.setLegendBackgroundColor(java.awt.Color.DARK_GRAY);
+        styler.setLegendBorderColor(java.awt.Color.GRAY);
+        styler.setPlotGridLinesColor(java.awt.Color.GRAY);
+        styler.setChartTitleBoxBackgroundColor(java.awt.Color.BLACK);
+        styler.setChartTitleBoxBorderColor(java.awt.Color.GRAY);
+        styler.setPlotGridLinesVisible(true);
+
+        styler.setMarkerSize(0);
+        // styler.setYAxisTicksVisible(false);
+
+        int xSpacingHint = (int) ((chart.getWidth() / numXTicks) * 0.5);
+        int ySpacingHint = (int) ((chart.getHeight() / numYTicks) * 0.5);
+        styler.setXAxisTickMarkSpacingHint(xSpacingHint);
+        styler.setYAxisTickMarkSpacingHint(ySpacingHint);
+
+        styler.setXAxisMin(limits[0] - 0.1);
+        styler.setXAxisMax(limits[1] + 0.1);
+        styler.setYAxisMin(-1.1);
+        styler.setYAxisMax(1.1);
+
+
         chart.addSeries("Sine", x, y, null);
         chart.addSeries("Prediction", x, new double[x.length], null);
         chartWrapper = new SwingWrapper<>(chart);
@@ -116,7 +152,7 @@ final public class LearnSineFunction extends TestingEnvironment {
         }
         
         trainingThread = new Thread(trainer);
-        trainingThread.start();
+        // trainingThread.start();
 
         startTime = Instant.now();
 
@@ -277,6 +313,11 @@ final public class LearnSineFunction extends TestingEnvironment {
             String[] args = input.split(" ");
 
             switch (args[0].toLowerCase()) {
+
+                case "start":
+                    if(!trainingThread.isAlive())
+                        trainingThread.start();
+                    return;
 
                 case "save":
                     FileType fileType;
