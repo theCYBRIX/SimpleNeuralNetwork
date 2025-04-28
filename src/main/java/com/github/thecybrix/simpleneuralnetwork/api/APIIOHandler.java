@@ -22,6 +22,7 @@ import com.github.thecybrix.simpleneuralnetwork.api.defaults.idmanager.NetworkID
 import com.github.thecybrix.simpleneuralnetwork.api.defaults.valuemapping.ValueMappingContext;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
+import com.github.thecybrix.simpleneuralnetwork.exceptions.EndpointConflictException;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.util.CallbackInvoker;
 import com.github.thecybrix.util.LengthPrefixedReader;
@@ -86,10 +87,10 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
     }
 
     public APIIOHandler(NeuralNetworkBuilder<E> networkBuilder, ParentSelector<E> parentSelector, ExecutorService executorService) throws IllegalArgumentException, NullPointerException {
-        NetworkIDManager<E> newtorkIdManager = new NetworkIDManager<>(executorService);
-        EvolutionContext<E> evolutionContext = new EvolutionContext<>(newtorkIdManager, networkBuilder, parentSelector);
-        ValueMappingContext<E> valueMappingContextContext = new ValueMappingContext<>(newtorkIdManager, networkBuilder, parentSelector);
-        addRequestHandlers(newtorkIdManager.getRequestHandlers());
+        NetworkIDManager<E> networkIdManager = new NetworkIDManager<>(executorService);
+        EvolutionContext<E> evolutionContext = new EvolutionContext<>(networkIdManager, networkBuilder, parentSelector);
+        ValueMappingContext<E> valueMappingContextContext = new ValueMappingContext<>(networkIdManager, networkBuilder, parentSelector);
+        addRequestHandlers(networkIdManager.getRequestHandlers());
         addRequestHandlers(evolutionContext.getRequestHandlers());
         addRequestHandlers(valueMappingContextContext.getRequestHandlers());
 
@@ -165,18 +166,47 @@ public class APIIOHandler<E extends MutableNeuralNetwork> implements CallbackInv
         return REQUEST_HANDLERS.values();
     }
 
-    public Optional<RequestHandler> getRequestHandler(String endpooint){
-        return Optional.ofNullable(REQUEST_HANDLERS.get(endpooint));
+    public Optional<RequestHandler> getRequestHandler(String endpoint){
+        return Optional.ofNullable(REQUEST_HANDLERS.get(endpoint));
     }
     
-    public void addRequestHandler(RequestHandler handler) throws NullPointerException {
+    public void addRequestHandler(RequestHandler handler) throws EndpointConflictException, NullPointerException {
         if(handler == null) throw new NullPointerException("Request handler is null.");
+        if(REQUEST_HANDLERS.containsKey(handler.getEndpoint())) throw new EndpointConflictException("Endpoint \"" + handler.getEndpoint() + "\" has already been defined.");
         REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }
 
-    public void addRequestHandlers(List<RequestHandler> handlers) throws NullPointerException {
-        if(handlers == null) throw new NullPointerException("Request handlers is null.");
-        handlers.parallelStream().filter(x -> x != null);
+    public void addRequestHandlers(List<RequestHandler> handlers) throws EndpointConflictException, NullPointerException {
+        if(handlers == null) throw new NullPointerException("Request handlers list is null.");
+        if(handlers.parallelStream().anyMatch(x -> x == null)) throw new NullPointerException("Request handlers list contains null.");
+
+        HashMap<String, Integer> endpointCounts = new HashMap<>();
+        for(RequestHandler handler : handlers){
+            String endpoint = handler.getEndpoint();
+            if(endpointCounts.containsKey(endpoint))
+                endpointCounts.put(endpoint, endpointCounts.get(endpoint) + 1);
+            else
+                endpointCounts.put(endpoint, 1);
+        }
+        HashMap<String, Integer> conflicts = new HashMap<>();
+        for(String endpoint : endpointCounts.keySet()){
+            Integer count = endpointCounts.get(endpoint);
+            if(count.intValue() > 1)
+                conflicts.put(endpoint, count);
+        }
+        if(conflicts.size() > 0){
+            StringBuilder errorMsg = new StringBuilder("Request handlers list contains endpoint conflict");
+            errorMsg.append(conflicts.size() > 1 ? "s:" : ":");
+            for(String endpoint : conflicts.keySet()){
+                errorMsg.append("\n\"")
+                        .append(endpoint)
+                        .append("\" (defined ")
+                        .append(conflicts.get(endpoint))
+                        .append(" times)");
+            }
+            throw new EndpointConflictException(errorMsg.toString());
+        }
+            
         for (RequestHandler handler : handlers)
             REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }

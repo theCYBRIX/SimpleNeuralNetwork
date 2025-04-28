@@ -3,13 +3,14 @@
         "lib/**/*.jar"
     ],
     "cSpell.words": [
+        "APIIO",
         "gson",
         "layerwise",
-        "mjsd",
         "neuralnetwork",
         "relu",
         "simpleneuralnetwork",
-        "SOFTMAX"
+        "SOFTMAX",
+        "thecybrix"
     ],
     "java.configuration.updateBuildConfiguration": "automatic"
 }
