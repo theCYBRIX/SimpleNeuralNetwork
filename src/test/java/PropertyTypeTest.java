@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-import com.github.thecybrix.simpleneuralnetwork.api.PropertyType;
+import com.github.thecybrix.simpleneuralnetwork.server.PropertyType;
 
 //Tests written using ChatGPT
 

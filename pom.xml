@@ -16,6 +16,20 @@
             <version>2.10.1</version>
         </dependency>
 
+        <!-- https://central.sonatype.com/artifact/it.unimi.dsi/fastutil -->
+        <dependency>
+            <groupId>it.unimi.dsi</groupId>
+            <artifactId>fastutil</artifactId>
+            <version>8.5.12</version>
+        </dependency>
+        
+        <!-- https://picocli.info/ -->
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>4.7.7</version>
+        </dependency>
+
         <!-- https://github.com/knowm/XChart -->
         <dependency>
             <groupId>org.knowm.xchart</groupId>

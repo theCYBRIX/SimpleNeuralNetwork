@@ -9,8 +9,8 @@ import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchExc
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.OffspringGenerator;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
-import com.github.thecybrix.util.CompoundRatio;
-import com.github.thecybrix.util.Fraction;
+import com.github.thecybrix.simpleneuralnetwork.util.CompoundRatio;
+import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends NetworkEvolutionManager<E> {
 

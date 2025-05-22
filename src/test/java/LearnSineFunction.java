@@ -44,7 +44,7 @@ final public class LearnSineFunction extends TestingEnvironment {
     private static float fpsLimit = 0.0f;
     private static String savePath = "TestSaves\\SinNetwork";
     private static FileType saveType = FileType.JSON;
-    private static int networksPerGeneration = 100;
+    private static int networksPerGeneration = 1500;
 
     private static int numSamples = 128;
     private static float acceptableError = 0.000005f;
@@ -152,7 +152,7 @@ final public class LearnSineFunction extends TestingEnvironment {
         }
         
         trainingThread = new Thread(trainer);
-        // trainingThread.start();
+        trainingThread.start();
 
         startTime = Instant.now();
 

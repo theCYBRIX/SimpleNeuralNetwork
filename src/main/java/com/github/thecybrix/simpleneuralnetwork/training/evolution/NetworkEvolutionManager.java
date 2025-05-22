@@ -18,8 +18,8 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.util.CompoundRatio;
-import com.github.thecybrix.util.Fraction;
+import com.github.thecybrix.simpleneuralnetwork.util.CompoundRatio;
+import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 

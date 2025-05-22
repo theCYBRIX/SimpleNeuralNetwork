@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.util.Fraction;
+import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 @FunctionalInterface
 public interface ParentSelector<E extends MutableNeuralNetwork> {

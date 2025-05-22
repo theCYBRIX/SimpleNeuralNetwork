@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.util.AutoRunnable;
-import com.github.thecybrix.util.CallbackInvoker;
+import com.github.thecybrix.simpleneuralnetwork.util.AutoRunnable;
+import com.github.thecybrix.simpleneuralnetwork.util.CallbackInvoker;
 
 public class EvolutionaryTrainer<E extends MutableNeuralNetwork> implements AutoRunnable, CallbackInvoker<EvolutionaryTrainer<E>> {
 	final private static Logger LOGGER = Logger.getLogger(EvolutionaryTrainer.class.getName());
