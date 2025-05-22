@@ -9,7 +9,6 @@ import com.github.thecybrix.simpleneuralnetwork.api.idmanager.NetworkIDManager;
 import com.github.thecybrix.simpleneuralnetwork.api.valuemapping.ValueMappingContext;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
-import com.github.thecybrix.simpleneuralnetwork.server.EndpointsRequest;
 import com.github.thecybrix.simpleneuralnetwork.server.JsonIOHandler;
 import com.github.thecybrix.simpleneuralnetwork.server.JsonRequestHandler;
 import com.github.thecybrix.simpleneuralnetwork.server.PropertyType;
@@ -88,8 +87,6 @@ public class JsonAPIServiceFactory {
         handler.addRequestHandlers(networkIdManager.getRequestHandlers());
         handler.addRequestHandlers(evolutionContext.getRequestHandlers());
         handler.addRequestHandlers(valueMappingContext.getRequestHandlers());
-
-        handler.addRequestHandler(new EndpointsRequest(handler));
 
         return handler;
     }

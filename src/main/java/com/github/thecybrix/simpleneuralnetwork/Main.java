@@ -17,9 +17,10 @@ import com.github.thecybrix.simpleneuralnetwork.server.SimpleTCPServer;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.Option;
 
-@Command(name = "neural-framework", mixinStandardHelpOptions = true, version = "Neural Framework 1.0", description = "Runs the neural framework in the specified mode.")
+@Command(name = "simpleneuralnetwork", mixinStandardHelpOptions = true, version = "Neural Framework 1.0", description = "Runs the neural framework in the specified mode.")
 public class Main implements Callable<Integer> {
 
     enum Mode {
@@ -32,8 +33,8 @@ public class Main implements Callable<Integer> {
 
     final private static int ERR_INVALID_MODE = 2;
     
-    @Option(names = {"-m", "--mode"}, required = true, description = "Mode to run: stdio or tcp")
-    private Mode mode = Mode.STDIO;
+    @Option(names = {"-m", "--mode"}, description = "Mode to run: stdio or tcp", converter=ModeConverter.class)
+    private Mode mode = Mode.TCP;
 
     @Option(names = {"-p", "--port"}, description = "Port number on which to expose the TCP server.")
     private int port = DEFAULT_PORT;
@@ -163,5 +164,14 @@ public class Main implements Callable<Integer> {
             else
                 Runtime.getRuntime().exec(new String[]{"clear"});
         } catch (IOException | InterruptedException ex) {}
+    }
+
+    public static class ModeConverter implements ITypeConverter<Mode> {
+        public ModeConverter(){}
+
+        @Override
+        public Mode convert(String value) throws Exception {
+            return Mode.valueOf(value.toUpperCase());
+        }
     }
 }
