@@ -69,8 +69,8 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
 
     public SimpleTCPServer(int serverPort, IOHandler ioHandler) throws IllegalArgumentException, NullPointerException {
         setPort(serverPort);
-        ioHandler = Objects.requireNonNull(ioHandler, "IOHandler is null.");
-        ioHandler.attachCallback(e -> { if(!(e instanceof SocketException)) logError(e); });
+        this.ioHandler = Objects.requireNonNull(ioHandler, "IOHandler is null.");
+        this.ioHandler.attachCallback(e -> { if(!(e instanceof SocketException)) logError(e); });
     }
 
     @Override

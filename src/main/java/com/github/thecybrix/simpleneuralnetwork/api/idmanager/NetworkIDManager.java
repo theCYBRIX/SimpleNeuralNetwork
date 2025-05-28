@@ -32,14 +32,9 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
 
     protected Map<Integer, E> neuralNetworks = new HashMap<>();
     protected IDManager idManager = new IDManager();
+    
+    private SimpleTCPServer binaryChannel = null;
 
-    public void startBinaryIOChannel() {
-        Thread ioThread;
-        BinaryIOHandler ioHandler = new BinaryIOHandler();
-        ioHandler.addRequestHandler(new BinaryProcessInputsRequest<E>(this));
-        ioThread = new Thread(new SimpleTCPServer(DEFAULT_IO_PORT, ioHandler), "Binary IO Thread");
-        ioThread.start();
-    }
     
     public NetworkLayout getLayout(int id) throws NoSuchElementException {
         return NetworkLayout.of(getNetwork(id));
@@ -87,6 +82,25 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
         return true;
     }
 
+    public SimpleTCPServer openBinaryChannel(){
+        return openBinaryChannel(DEFAULT_IO_PORT);
+    }
+
+    public SimpleTCPServer openBinaryChannel(int port){
+        BinaryIOHandler ioHandler = new BinaryIOHandler();
+        ioHandler.addRequestHandler(new BinaryProcessInputsRequest<>(this));
+        binaryChannel = new SimpleTCPServer(port, ioHandler);
+        binaryChannel.start(BinaryIOHandler.class.getSimpleName());
+        return binaryChannel;
+    }
+
+    public boolean closeBinaryChannel(){
+        if(binaryChannel == null || !binaryChannel.isRunning())
+            return false;
+        binaryChannel.stop();
+        return true;
+    }
+
     public Int2ObjectMap<double[]> processInputs(Int2ObjectMap<double[]> inputData){
         Int2ObjectMap<double[]> outputs = new Int2ObjectOpenHashMap<double[]>(inputData.size());
         ArrayList<Integer> failedIds = new ArrayList<>();
@@ -108,7 +122,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
                     }
                 }
             )
-        );
+        ).join();
         
         if(!failedIds.isEmpty())
             LOGGER.warning("Failed to process forward passes: " + failedIds);
@@ -158,7 +172,9 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
             new ProcessInputsRequest<>(this),
             new AddNetworkRequest<>(this),
             new RemoveNetworkRequest<>(this),
-            new GetNetworkRequest<>(this)
+            new GetNetworkRequest<>(this),
+            new OpenBinaryChannelRequest<>(this),
+            new CloseBinaryChannelRequest<>(this)
         );
     }
 

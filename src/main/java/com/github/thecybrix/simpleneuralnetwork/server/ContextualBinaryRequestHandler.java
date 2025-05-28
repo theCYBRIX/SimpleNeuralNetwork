@@ -1,8 +1,9 @@
 package com.github.thecybrix.simpleneuralnetwork.server;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Objects;
+
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareInputStream;
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareOutputStream;
 
 public abstract class ContextualBinaryRequestHandler<E extends APIContext> implements BinaryRequestHandler {
     final private int ENDPOINT;
@@ -14,11 +15,11 @@ public abstract class ContextualBinaryRequestHandler<E extends APIContext> imple
     }
     
     @Override
-    final public void handle(InputStream input, OutputStream output, boolean bigEndian) throws Exception {
-        handle(input, output, bigEndian, CONTEXT);
+    final public void handle(EndianAwareInputStream input, EndianAwareOutputStream output) throws Exception {
+        handle(input, output, CONTEXT);
     }
 
-    public abstract void handle(InputStream input, OutputStream output, boolean bigEndian, E context) throws Exception;
+    public abstract void handle(EndianAwareInputStream input, EndianAwareOutputStream output, E context) throws Exception;
 
     @Override
     public int getEndpoint() {

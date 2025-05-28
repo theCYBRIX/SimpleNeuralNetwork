@@ -1,7 +1,80 @@
 package com.github.thecybrix.simpleneuralnetwork.util;
 
-public abstract class EndianConverter {
+public class EndianConverter {
 
+    private final boolean bigEndian;
+
+    public EndianConverter(Endianness endianness) {
+        this(endianness == Endianness.BIG_ENDIAN);
+    }
+
+    public EndianConverter(boolean bigEndian) {
+        this.bigEndian = bigEndian;
+    }
+
+    public byte[] charToBytes(char value) {
+        return shortToBytes((short) value, bigEndian);
+    }
+
+    public char bytesToChar(byte[] bytes) {
+        return (char) (bytesToShort(bytes, bigEndian) & 0xFFFF);
+    }
+
+    public byte[] shortToBytes(short value) {
+        return shortToBytes(value, bigEndian);
+    }
+
+    public short bytesToShort(byte[] bytes) {
+        return bytesToShort(bytes, bigEndian);
+    }
+
+    public byte[] intToBytes(int value) {
+        return intToBytes(value, bigEndian);
+    }
+
+    public int bytesToInt(byte[] b) {
+        return bytesToInt(b, bigEndian);
+    }
+
+    public byte[] longToBytes(long value) {
+        return longToBytes(value, bigEndian);
+    }
+
+    public long bytesToLong(byte[] b) {
+        return bytesToLong(b, bigEndian);
+    }
+
+    public byte[] floatToBytes(float value) {
+        return floatToBytes(value, bigEndian);
+    }
+
+    public float bytesToFloat(byte[] b) {
+        return bytesToFloat(b, bigEndian);
+    }
+
+    public byte[] doubleToBytes(double value) {
+        return doubleToBytes(value, bigEndian);
+    }
+
+    public double bytesToDouble(byte[] b) {
+        return bytesToDouble(b, bigEndian);
+    }
+    
+    /**
+     * Converts a short to a 2-byte array in the specified endian byte order.
+     * 
+     * @param value The short to convert.
+     * @param bigEndian Whether to use big-endian byte order.
+     * @return A byte array representing the short.
+     */
+    public static byte[] shortToBytes(short value, boolean bigEndian) {
+        byte[] bytes = new byte[2];
+        for (int i = 0; i < 2; i++) {
+            int index = bigEndian ? 1 - i : i;
+            bytes[index] = (byte) (value >>> (i * 8));
+        }
+        return bytes;
+    }
 
     /**
      * Converts an integer to a 4-byte array in the specified endian byte order.
@@ -18,7 +91,6 @@ public abstract class EndianConverter {
         }
         return bytes;
     }
-
 
     /**
      * Converts a 4-byte array into an integer using the specified endian byte order.
@@ -39,6 +111,24 @@ public abstract class EndianConverter {
         return value;
     }
 
+    /**
+     * Converts a 2-byte array into a short using the specified endian byte order.
+     * 
+     * @param bytes The bytes to convert.
+     * @param bigEndian Whether to use big-endian byte order.
+     * @return The short represented by the byte array.
+     */
+    public static short bytesToShort(byte[] bytes, boolean bigEndian) {
+        if (bytes.length != 2) {
+            throw new IllegalArgumentException("Byte array must be exactly 2 bytes long.");
+        }
+        int value = 0;
+        for (int i = 0; i < 2; i++) {
+            int index = bigEndian ? 1 - i : i;
+            value |= (bytes[index] & 0xFF) << (i * 8);
+        }
+        return (short) value;
+    }
 
     /**
      * Converts a long to an 8-byte array in the specified endian byte order.
@@ -55,7 +145,6 @@ public abstract class EndianConverter {
         }
         return bytes;
     }
-
 
     /**
      * Converts an 8-byte array into a long using the specified endian byte order.
@@ -76,7 +165,6 @@ public abstract class EndianConverter {
         return value;
     }
 
-
     /**
      * Converts a float to a 4-byte array in the specified endian byte order.
      * 
@@ -88,7 +176,6 @@ public abstract class EndianConverter {
         int intValue = Float.floatToIntBits(value);
         return intToBytes(intValue, bigEndian);
     }
-
 
     /**
      * Converts a 4-byte array into an float using the specified endian byte order.
@@ -102,7 +189,6 @@ public abstract class EndianConverter {
         return Float.intBitsToFloat(intValue);
     }
 
-
     /**
      * Converts a double to an 8-byte array in the specified endian byte order.
      * 
@@ -114,7 +200,6 @@ public abstract class EndianConverter {
         long longValue = Double.doubleToLongBits(value);
         return longToBytes(longValue, bigEndian);
     }
-
 
     /**
      * Converts an 8-byte array into a double using the specified endian byte order.
@@ -128,5 +213,4 @@ public abstract class EndianConverter {
         return Double.longBitsToDouble(longValue);
     }
     
-
 }

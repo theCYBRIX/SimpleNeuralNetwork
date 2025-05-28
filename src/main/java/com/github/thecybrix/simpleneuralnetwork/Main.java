@@ -33,7 +33,7 @@ public class Main implements Callable<Integer> {
 
     final private static int ERR_INVALID_MODE = 2;
     
-    @Option(names = {"-m", "--mode"}, description = "Mode to run: stdio or tcp", converter=ModeConverter.class)
+    @Option(names = {"-m", "--mode"}, description = "Mode to run: stdio or tcp.", converter=ModeConverter.class)
     private Mode mode = Mode.TCP;
 
     @Option(names = {"-p", "--port"}, description = "Port number on which to expose the TCP server.")

@@ -1,11 +1,11 @@
 package com.github.thecybrix.simpleneuralnetwork.server;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +19,9 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 import com.github.thecybrix.simpleneuralnetwork.exceptions.EndpointConflictException;
-import com.github.thecybrix.simpleneuralnetwork.util.EndianConverter;
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareInputStream;
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareOutputStream;
+import com.github.thecybrix.simpleneuralnetwork.util.Endianness;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
@@ -77,27 +79,27 @@ public class BinaryIOHandler implements IOHandler {
     }
 
     public void handle(InputStream input, OutputStream output, boolean bigEndian) throws InterruptedException {
-        try {
+        Endianness endian = bigEndian ? Endianness.BIG_ENDIAN : Endianness.LITTLE_ENDIAN;
+        try (
+            EndianAwareInputStream bufferedInput = new EndianAwareInputStream(new BufferedInputStream(input), endian);
+            EndianAwareOutputStream bufferedOutput = new EndianAwareOutputStream(new BufferedOutputStream(output), endian); 
+        ) {
             keepAlive = true;
             while(keepAlive){
-                if(Thread.interrupted()) throw new InterruptedException();
+                if(Thread.interrupted()) throw new InterruptedException(); 
 
-                byte[] request_bytes = input.readNBytes(4);
-
-                if(request_bytes.length < 4) throw new SocketException("Stream was closed before receiving the requested number of bytes.");
-
-                int request = EndianConverter.bytesToInt(request_bytes, bigEndian);
+                int request = bufferedInput.readInt();
 
                 BinaryRequestHandler handler = REQUEST_HANDLERS.get(request);
 
                 if(handler == null){
-                    output.write(-1);
-                    output.write(ERR_UNDEFINED_ENDPOINT);
-                    output.flush();
-                    continue;
+                    bufferedOutput.writeByte((byte)-1);
+                    bufferedOutput.writeInt(ERR_UNDEFINED_ENDPOINT);
+                } else {
+                    handler.handle(bufferedInput, bufferedOutput);
                 }
 
-                handler.handle(input, output, bigEndian);
+                bufferedOutput.flush();
             }
         } catch (Exception e) {
             logError(e);
@@ -168,7 +170,7 @@ public class BinaryIOHandler implements IOHandler {
 
     @Override
     public List<Consumer<Exception>> getCallbackList() {
-        return Collections.unmodifiableList(CALLBACKS);
+        return CALLBACKS;
     }
     
 }

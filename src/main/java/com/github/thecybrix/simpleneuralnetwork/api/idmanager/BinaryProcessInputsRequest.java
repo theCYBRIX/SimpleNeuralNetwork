@@ -1,11 +1,9 @@
 package com.github.thecybrix.simpleneuralnetwork.api.idmanager;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.server.ContextualBinaryRequestHandler;
-import com.github.thecybrix.simpleneuralnetwork.util.EndianConverter;
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareInputStream;
+import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareOutputStream;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -28,37 +26,49 @@ public class BinaryProcessInputsRequest<E extends SimpleNeuralNetwork> extends C
      * <p> response: numNetworks (int) -> [loopNetworks] -> networkId (int) -> numDoubles(int) -> [loopDoubles] -> nodeValue (double) -> [/loopDoubles] ->  [/loopNetworks] </p>
     **/
     @Override
-    public void handle(InputStream input, OutputStream output, boolean bigEndian, NetworkIDManager<E> context) throws Exception {
+    public void handle(EndianAwareInputStream input, EndianAwareOutputStream output, NetworkIDManager<E> context) throws Exception {
+        
+        // StopWatch stopWatch = new StopWatch();
+        // stopWatch.start();
+
         Int2ObjectMap<double[]> inputMap = new Int2ObjectOpenHashMap<>();
 
-        int numNetworks = EndianConverter.bytesToInt(input.readNBytes(4), bigEndian);
+        int numNetworks = input.readInt();
         for (int network = 0; network < numNetworks; network++) {
-            int networkId = EndianConverter.bytesToInt(input.readNBytes(4), bigEndian);
-            int numInputs = EndianConverter.bytesToInt(input.readNBytes(4), bigEndian);
+            int networkId = input.readInt();
+            int numInputs = input.readInt();
             double[] nodeValues = new double[numInputs];
-            for(int nodeIndex = 0; nodeIndex < numInputs; nodeIndex++){
-                nodeValues[nodeIndex] = EndianConverter.bytesToDouble(input.readNBytes(8), bigEndian);
+
+            for (int nodeIndex = 0; nodeIndex < numInputs; nodeIndex++) {
+                nodeValues[nodeIndex] = input.readDouble();
             }
+
             inputMap.put(networkId, nodeValues);
         }
 
         Int2ObjectMap<double[]> outputMap = context.processInputs(inputMap);
 
-        output.write(0); //OK Signal
+        output.writeInt(0); // OK signal
 
-        byte[] numNetworksBytes = EndianConverter.intToBytes(outputMap.size(), bigEndian);
-        output.write(numNetworksBytes);
+        output.writeInt(outputMap.size());
 
         for (Int2ObjectMap.Entry<double[]> entry : outputMap.int2ObjectEntrySet()) {
             int networkId = entry.getIntKey();
             double[] nodeValues = entry.getValue();
-            
-            output.write(EndianConverter.intToBytes(networkId, bigEndian));
-            output.write(EndianConverter.intToBytes(nodeValues.length, bigEndian));
 
-            for(double value : nodeValues)
-                output.write(EndianConverter.doubleToBytes(value, bigEndian));
+            output.writeInt(networkId);
+            output.writeInt(nodeValues.length);
+
+            for (double value : nodeValues) {
+                output.writeDouble(value);
+            }
         }
+
+        output.flush();
+
+        // stopWatch.stop();
+        // DecimalFormat format = new DecimalFormat("#.####");
+        // System.out.println("ms: " + format.format(stopWatch.getMillisExact()));
     }
     
 }
