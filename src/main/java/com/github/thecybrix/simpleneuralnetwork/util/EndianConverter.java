@@ -16,201 +16,227 @@ public class EndianConverter {
         return shortToBytes((short) value, bigEndian);
     }
 
-    public char bytesToChar(byte[] bytes) {
-        return (char) (bytesToShort(bytes, bigEndian) & 0xFFFF);
+    public void charToBytes(char value, byte[] dest, int offset) {
+        shortToBytes((short) value, dest, offset, bigEndian);
     }
 
     public byte[] shortToBytes(short value) {
         return shortToBytes(value, bigEndian);
     }
 
-    public short bytesToShort(byte[] bytes) {
-        return bytesToShort(bytes, bigEndian);
+    public void shortToBytes(short value, byte[] dest, int offset) {
+        shortToBytes(value, dest, offset, bigEndian);
     }
 
     public byte[] intToBytes(int value) {
         return intToBytes(value, bigEndian);
     }
 
-    public int bytesToInt(byte[] b) {
-        return bytesToInt(b, bigEndian);
+    public void intToBytes(int value, byte[] dest, int offset) {
+        intToBytes(value, dest, offset, bigEndian);
     }
 
     public byte[] longToBytes(long value) {
         return longToBytes(value, bigEndian);
     }
 
-    public long bytesToLong(byte[] b) {
-        return bytesToLong(b, bigEndian);
+    public void longToBytes(long value, byte[] dest, int offset) {
+        longToBytes(value, dest, offset, bigEndian);
     }
 
     public byte[] floatToBytes(float value) {
         return floatToBytes(value, bigEndian);
     }
 
-    public float bytesToFloat(byte[] b) {
-        return bytesToFloat(b, bigEndian);
+    public void floatToBytes(float value, byte[] dest, int offset) {
+        floatToBytes(value, dest, offset, bigEndian);
     }
 
     public byte[] doubleToBytes(double value) {
         return doubleToBytes(value, bigEndian);
     }
 
-    public double bytesToDouble(byte[] b) {
-        return bytesToDouble(b, bigEndian);
+    public void doubleToBytes(double value, byte[] dest, int offset) {
+        doubleToBytes(value, dest, offset, bigEndian);
+    }
+
+    public char bytesToChar(byte[] bytes) {
+        return (char) (bytesToShort(bytes, 0, bigEndian) & 0xFFFF);
+    }
+
+    public char bytesToChar(byte[] bytes, int offset) {
+        return bytesToChar(bytes, offset, bigEndian);
+    }
+
+    public short bytesToShort(byte[] bytes) {
+        return bytesToShort(bytes, 0, bigEndian);
+    }
+
+    public short bytesToShort(byte[] bytes, int offset) {
+        return bytesToShort(bytes, offset, bigEndian);
+    }
+
+    public int bytesToInt(byte[] bytes) {
+        return bytesToInt(bytes, 0, bigEndian);
+    }
+
+    public int bytesToInt(byte[] bytes, int offset) {
+        return bytesToInt(bytes, offset, bigEndian);
+    }
+
+    public long bytesToLong(byte[] bytes) {
+        return bytesToLong(bytes, 0, bigEndian);
+    }
+
+    public long bytesToLong(byte[] bytes, int offset) {
+        return bytesToLong(bytes, offset, bigEndian);
+    }
+
+    public float bytesToFloat(byte[] bytes) {
+        return bytesToFloat(bytes, 0, bigEndian);
+    }
+
+    public float bytesToFloat(byte[] bytes, int offset) {
+        return bytesToFloat(bytes, offset, bigEndian);
+    }
+
+    public double bytesToDouble(byte[] bytes) {
+        return bytesToDouble(bytes, 0, bigEndian);
+    }
+
+    public double bytesToDouble(byte[] bytes, int offset) {
+        return bytesToDouble(bytes, offset, bigEndian);
     }
     
-    /**
-     * Converts a short to a 2-byte array in the specified endian byte order.
-     * 
-     * @param value The short to convert.
-     * @param bigEndian Whether to use big-endian byte order.
-     * @return A byte array representing the short.
-     */
     public static byte[] shortToBytes(short value, boolean bigEndian) {
         byte[] bytes = new byte[2];
-        for (int i = 0; i < 2; i++) {
-            int index = bigEndian ? 1 - i : i;
-            bytes[index] = (byte) (value >>> (i * 8));
-        }
+        shortToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
 
-    /**
-     * Converts an integer to a 4-byte array in the specified endian byte order.
-     * 
-     * @param value The integer to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return A byte array representing the integer.
-     */
     public static byte[] intToBytes(int value, boolean bigEndian) {
         byte[] bytes = new byte[4];
-        for (int i = 0; i < 4; i++) {
-            int index = bigEndian ? 3 - i : i;
-            bytes[index] = (byte) (value >>> (i * 8));
-        }
+        intToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
 
-    /**
-     * Converts a 4-byte array into an integer using the specified endian byte order.
-     * 
-     * @param bytes The bytes to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return The integer represented by the byte array.
-     */
-    public static int bytesToInt(byte[] bytes, boolean bigEndian) {
-        if (bytes.length != 4) {
-            throw new IllegalArgumentException("Byte array must be exactly 4 bytes long.");
+    public static byte[] longToBytes(long value, boolean bigEndian) {
+        byte[] bytes = new byte[8];
+        longToBytes(value, bytes, 0, bigEndian);
+        return bytes;
+    }
+
+    public static byte[] floatToBytes(float value, boolean bigEndian) {
+        byte[] bytes = new byte[4];
+        floatToBytes(value, bytes, 0, bigEndian);
+        return bytes;
+    }
+    
+    public static byte[] doubleToBytes(double value, boolean bigEndian) {
+        byte[] bytes = new byte[8];
+        doubleToBytes(value, bytes, 0, bigEndian);
+        return bytes;
+    }
+    
+    public static void shortToBytes(short value, byte[] dest, int offset, boolean bigEndian) {
+        for (int i = 0; i < 2; i++) {
+            int index = bigEndian ? 1 - i : i;
+            dest[index + offset] = (byte) (value >>> (i * 8));
+        }
+    }
+
+    public static void intToBytes(int value, byte[] dest, int offset, boolean bigEndian) {
+        for (int i = 0; i < 4; i++) {
+            int index = bigEndian ? 3 - i : i;
+            dest[index + offset] = (byte) (value >>> (i * 8));
+        }
+    }
+
+    public static void longToBytes(long value, byte[] dest, int offset, boolean bigEndian) {
+        for (int i = 0; i < 8; i++) {
+            int index = bigEndian ? 7 - i : i;
+            dest[index + offset] = (byte) (value >>> (i * 8));
+        }
+    }
+
+    public static void floatToBytes(float value, byte[] dest, int offset, boolean bigEndian) {
+        int intValue = Float.floatToIntBits(value);
+        intToBytes(intValue, dest, offset, bigEndian);
+    }
+    
+    public static void doubleToBytes(double value, byte[] dest, int offset, boolean bigEndian) {
+        long longValue = Double.doubleToLongBits(value);
+        longToBytes(longValue, dest, offset, bigEndian);
+    }
+    
+    public static int bytesToInt(byte[] bytes, int offset, boolean bigEndian) {
+        if (bytes == null || bytes.length < offset + 4) {
+            throw new IllegalArgumentException("Byte array must contain at least 4 bytes from the given offset.");
         }
         int value = 0;
         for (int i = 0; i < 4; i++) {
-            int index = bigEndian ? 3 - i : i;
-            value |= ((int) bytes[index] & 0xFF) << (i * 8);
+            int index = offset + (bigEndian ? 3 - i : i);
+            value |= (bytes[index] & 0xFF) << (i * 8);
         }
         return value;
     }
 
-    /**
-     * Converts a 2-byte array into a short using the specified endian byte order.
-     * 
-     * @param bytes The bytes to convert.
-     * @param bigEndian Whether to use big-endian byte order.
-     * @return The short represented by the byte array.
-     */
-    public static short bytesToShort(byte[] bytes, boolean bigEndian) {
-        if (bytes.length != 2) {
-            throw new IllegalArgumentException("Byte array must be exactly 2 bytes long.");
+    public static int bytesToInt(byte[] bytes, boolean bigEndian) {
+        return bytesToInt(bytes, 0, bigEndian);
+    }
+
+    public static short bytesToShort(byte[] bytes, int offset, boolean bigEndian) {
+        if (bytes == null || bytes.length < offset + 2) {
+            throw new IllegalArgumentException("Byte array must contain at least 2 bytes from the given offset.");
         }
         int value = 0;
         for (int i = 0; i < 2; i++) {
-            int index = bigEndian ? 1 - i : i;
+            int index = offset + (bigEndian ? 1 - i : i);
             value |= (bytes[index] & 0xFF) << (i * 8);
         }
         return (short) value;
     }
 
-    /**
-     * Converts a long to an 8-byte array in the specified endian byte order.
-     * 
-     * @param value The long to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return A byte array representing the long.
-     */
-    public static byte[] longToBytes(long value, boolean bigEndian) {
-        byte[] bytes = new byte[8];
-        for (int i = 0; i < 8; i++) {
-            int index = bigEndian ? 7 - i : i;
-            bytes[index] = (byte) (value >>> (i * 8));
-        }
-        return bytes;
+    public static short bytesToShort(byte[] bytes, boolean bigEndian) {
+        return bytesToShort(bytes, 0, bigEndian);
     }
 
-    /**
-     * Converts an 8-byte array into a long using the specified endian byte order.
-     * 
-     * @param bytes The bytes to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return The long represented by the byte array.
-     */
-    public static long bytesToLong(byte[] bytes, boolean bigEndian) {
-        if (bytes.length != 8) {
-            throw new IllegalArgumentException("Byte array must be exactly 8 bytes long.");
+    public static long bytesToLong(byte[] bytes, int offset, boolean bigEndian) {
+        if (bytes == null || bytes.length < offset + 8) {
+            throw new IllegalArgumentException("Byte array must contain at least 8 bytes from the given offset.");
         }
         long value = 0;
         for (int i = 0; i < 8; i++) {
-            int index = bigEndian ? 7 - i : i;
+            int index = offset + (bigEndian ? 7 - i : i);
             value |= ((long) bytes[index] & 0xFFL) << (i * 8);
         }
         return value;
     }
 
-    /**
-     * Converts a float to a 4-byte array in the specified endian byte order.
-     * 
-     * @param value The float to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return A byte array representing the float.
-     */
-    public static byte[] floatToBytes(float value, boolean bigEndian) {
-        int intValue = Float.floatToIntBits(value);
-        return intToBytes(intValue, bigEndian);
+    public static long bytesToLong(byte[] bytes, boolean bigEndian) {
+        return bytesToLong(bytes, 0, bigEndian);
     }
 
-    /**
-     * Converts a 4-byte array into an float using the specified endian byte order.
-     * 
-     * @param bytes The bytes to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return The float represented by the byte array.
-     */
+    public static float bytesToFloat(byte[] bytes, int offset, boolean bigEndian) {
+        int intBits = bytesToInt(bytes, offset, bigEndian);
+        return Float.intBitsToFloat(intBits);
+    }
+
     public static float bytesToFloat(byte[] bytes, boolean bigEndian) {
-        int intValue = bytesToInt(bytes, bigEndian);
-        return Float.intBitsToFloat(intValue);
+        return bytesToFloat(bytes, 0, bigEndian);
     }
 
-    /**
-     * Converts a double to an 8-byte array in the specified endian byte order.
-     * 
-     * @param value The double to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return A byte array representing the double.
-     */
-    public static byte[] doubleToBytes(double value, boolean bigEndian) {
-        long longValue = Double.doubleToLongBits(value);
-        return longToBytes(longValue, bigEndian);
+    public static double bytesToDouble(byte[] bytes, int offset, boolean bigEndian) {
+        long longBits = bytesToLong(bytes, offset, bigEndian);
+        return Double.longBitsToDouble(longBits);
     }
 
-    /**
-     * Converts an 8-byte array into a double using the specified endian byte order.
-     * 
-     * @param bytes The bytes to convert.
-     * @param bigEndian Weather to use big-endian byte order.
-     * @return The double represented by the byte array.
-     */
     public static double bytesToDouble(byte[] bytes, boolean bigEndian) {
-        long longValue = bytesToLong(bytes, bigEndian);
-        return Double.longBitsToDouble(longValue);
+        return bytesToDouble(bytes, 0, bigEndian);
+    }
+
+    public static char bytesToChar(byte[] bytes, int offset, boolean bigEndian) {
+        return (char) bytesToShort(bytes, offset, bigEndian);
     }
     
 }

@@ -87,6 +87,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
     }
 
     public SimpleTCPServer openBinaryChannel(int port){
+        closeBinaryChannel();
         BinaryIOHandler ioHandler = new BinaryIOHandler();
         ioHandler.addRequestHandler(new BinaryProcessInputsRequest<>(this));
         binaryChannel = new SimpleTCPServer(port, ioHandler);

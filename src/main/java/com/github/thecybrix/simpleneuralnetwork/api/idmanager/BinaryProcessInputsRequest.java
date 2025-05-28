@@ -37,11 +37,7 @@ public class BinaryProcessInputsRequest<E extends SimpleNeuralNetwork> extends C
         for (int network = 0; network < numNetworks; network++) {
             int networkId = input.readInt();
             int numInputs = input.readInt();
-            double[] nodeValues = new double[numInputs];
-
-            for (int nodeIndex = 0; nodeIndex < numInputs; nodeIndex++) {
-                nodeValues[nodeIndex] = input.readDouble();
-            }
+            double[] nodeValues = input.readDoubleArray(numInputs);
 
             inputMap.put(networkId, nodeValues);
         }
@@ -59,9 +55,7 @@ public class BinaryProcessInputsRequest<E extends SimpleNeuralNetwork> extends C
             output.writeInt(networkId);
             output.writeInt(nodeValues.length);
 
-            for (double value : nodeValues) {
-                output.writeDouble(value);
-            }
+            output.writeDoubleArray(nodeValues);
         }
 
         output.flush();

@@ -1,12 +1,13 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Random;
 
 import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareInputStream;
 import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareOutputStream;
 import com.github.thecybrix.simpleneuralnetwork.util.EndianConverter;
 import com.github.thecybrix.simpleneuralnetwork.util.Endianness;
 import com.github.thecybrix.simpleneuralnetwork.util.StopWatch;
-
-import java.io.*;
-import java.util.Random;
 
 public class EndianConversionBenchmark {
 
@@ -28,155 +29,261 @@ public class EndianConversionBenchmark {
         );
     }
 
-    public static void main(String[] args) {
-        try {
-            new EndianConversionBenchmark().benchmarkEndianConversionMethods();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    
-    @SuppressWarnings({ "resource", "unused" })
-    public void benchmarkEndianConversionMethods() throws IOException {
-        Random rand = new Random();
-
-        StopWatch staticTimer = new StopWatch();
-        StopWatch streamTimer = new StopWatch();
-
-        // Setup output/input streams
-        ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
-        EndianAwareOutputStream streamOut = new EndianAwareOutputStream(outBuffer, ENDIANNESS);
-
-        ByteArrayInputStream inBuffer;
-        EndianAwareInputStream streamIn;
-
+    public static void main(String[] args) throws IOException {
+        Random rand = new Random(42);
         EndianConverter converter = new EndianConverter(ENDIANNESS);
 
-        
-        // === INT ===
-        staticTimer.start();
+        benchmarkShort(rand, converter);
+        benchmarkChar(rand, converter);
+        benchmarkInt(rand, converter);
+        benchmarkLong(rand, converter);
+        benchmarkFloat(rand, converter);
+        benchmarkDouble(rand, converter);
+    }
+
+    @SuppressWarnings("resource")
+    private static void benchmarkShort(Random rand, EndianConverter converter) throws IOException {
+        short[] data = new short[SAMPLES];
         for (int i = 0; i < SAMPLES; i++) {
-            int val = rand.nextInt();
-            byte[] b = converter.intToBytes(val);
-
-            ByteArrayOutputStream tempOut = new ByteArrayOutputStream();
-            tempOut.write(b);
-            tempOut.flush();
-
-            ByteArrayInputStream tempIn = new ByteArrayInputStream(tempOut.toByteArray());
-            byte[] read = tempIn.readNBytes(4);
-            int val2 = converter.bytesToInt(read);
+            data[i] = (short) rand.nextInt();
         }
-        staticTimer.stop();
 
-        streamTimer.start();
+        StopWatch sw = new StopWatch();
+
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (short value : data) {
+            byteOutputStream.write(converter.shortToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
         for (int i = 0; i < SAMPLES; i++) {
-            outBuffer.reset();
-            int val = rand.nextInt();
-            streamOut.writeInt(val);
-            streamOut.flush();
-
-            inBuffer = new ByteArrayInputStream(outBuffer.toByteArray());
-            streamIn = new EndianAwareInputStream(inBuffer, ENDIANNESS);
-            int val2 = streamIn.readInt();
+            byte[] buffer = byteInputStream.readNBytes(2);
+            converter.bytesToShort(buffer);
         }
-        streamTimer.stop();
+        sw.stop();
+        double staticTime = sw.getMillisExact();
 
-        printResult("int", staticTimer.getMillisExact(), streamTimer.getMillisExact());
-
-        // === LONG ===
-        staticTimer.start();
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (short value : data) {
+            out.writeShort(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
         for (int i = 0; i < SAMPLES; i++) {
-            long val = rand.nextLong();
-            byte[] b = converter.longToBytes(val);
-
-            ByteArrayOutputStream tempOut = new ByteArrayOutputStream();
-            tempOut.write(b);
-            tempOut.flush();
-
-            ByteArrayInputStream tempIn = new ByteArrayInputStream(tempOut.toByteArray());
-            byte[] read = tempIn.readNBytes(8);
-            long val2 = converter.bytesToLong(read);
+            in.readShort();
         }
-        staticTimer.stop();
+        sw.stop();
+        double streamTime = sw.getMillisExact();
 
-        streamTimer.start();
+        printResult("short", staticTime, streamTime);
+    }
+
+    @SuppressWarnings("resource")
+    private static void benchmarkChar(Random rand, EndianConverter converter) throws IOException {
+        char[] data = new char[SAMPLES];
         for (int i = 0; i < SAMPLES; i++) {
-            outBuffer.reset();
-            long val = rand.nextLong();
-            streamOut.writeLong(val);
-            streamOut.flush();
-
-            inBuffer = new ByteArrayInputStream(outBuffer.toByteArray());
-            streamIn = new EndianAwareInputStream(inBuffer, ENDIANNESS);
-            long val2 = streamIn.readLong();
+            data[i] = (char) rand.nextInt(65536);
         }
-        streamTimer.stop();
 
-        printResult("long", staticTimer.getMillisExact(), streamTimer.getMillisExact());
+        StopWatch sw = new StopWatch();
 
-        // === FLOAT ===
-        staticTimer.start();
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (char value : data) {
+            byteOutputStream.write(converter.charToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
         for (int i = 0; i < SAMPLES; i++) {
-            float val = rand.nextFloat();
-            byte[] b = converter.floatToBytes(val);
-
-            ByteArrayOutputStream tempOut = new ByteArrayOutputStream();
-            tempOut.write(b);
-            tempOut.flush();
-
-            ByteArrayInputStream tempIn = new ByteArrayInputStream(tempOut.toByteArray());
-            byte[] read = tempIn.readNBytes(4);
-            float val2 = converter.bytesToFloat(read);
+            byte[] buffer = byteInputStream.readNBytes(2);
+            converter.bytesToChar(buffer);
         }
-        staticTimer.stop();
+        sw.stop();
+        double staticTime = sw.getMillisExact();
 
-        streamTimer.start();
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (char value : data) {
+            out.writeChar(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
         for (int i = 0; i < SAMPLES; i++) {
-            outBuffer.reset();
-            float val = rand.nextFloat();
-            streamOut.writeFloat(val);
-            streamOut.flush();
-
-            inBuffer = new ByteArrayInputStream(outBuffer.toByteArray());
-            streamIn = new EndianAwareInputStream(inBuffer, ENDIANNESS);
-            float val2 = streamIn.readFloat();
+            in.readChar();
         }
-        streamTimer.stop();
+        sw.stop();
+        double streamTime = sw.getMillisExact();
 
-        printResult("float", staticTimer.getMillisExact(), streamTimer.getMillisExact());
+        printResult("char", staticTime, streamTime);
+    }
 
-        // === DOUBLE ===
-        staticTimer.start();
+    @SuppressWarnings("resource")
+    private static void benchmarkInt(Random rand, EndianConverter converter) throws IOException {
+        int[] data = new int[SAMPLES];
         for (int i = 0; i < SAMPLES; i++) {
-            double val = rand.nextDouble();
-            byte[] b = converter.doubleToBytes(val);
-
-            ByteArrayOutputStream tempOut = new ByteArrayOutputStream();
-            tempOut.write(b);
-            tempOut.flush();
-
-            ByteArrayInputStream tempIn = new ByteArrayInputStream(tempOut.toByteArray());
-            byte[] read = tempIn.readNBytes(8);
-            double val2 = converter.bytesToDouble(read);
+            data[i] = rand.nextInt();
         }
-        staticTimer.stop();
 
-        streamTimer.start();
+        StopWatch sw = new StopWatch();
+
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (int value : data) {
+            byteOutputStream.write(converter.intToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
         for (int i = 0; i < SAMPLES; i++) {
-            outBuffer.reset();
-            double val = rand.nextDouble();
-            streamOut.writeDouble(val);
-            streamOut.flush();
-
-            inBuffer = new ByteArrayInputStream(outBuffer.toByteArray());
-            streamIn = new EndianAwareInputStream(inBuffer, ENDIANNESS);
-            double val2 = streamIn.readDouble();
+            byte[] buffer = byteInputStream.readNBytes(4);
+            converter.bytesToInt(buffer);
         }
-        streamTimer.stop();
+        sw.stop();
+        double staticTime = sw.getMillisExact();
 
-        printResult("double", staticTimer.getMillisExact(), streamTimer.getMillisExact());
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (int value : data) {
+            out.writeInt(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
+        for (int i = 0; i < SAMPLES; i++) {
+            in.readInt();
+        }
+        sw.stop();
+        double streamTime = sw.getMillisExact();
+
+        printResult("int", staticTime, streamTime);
+    }
+
+    @SuppressWarnings("resource")
+    private static void benchmarkLong(Random rand, EndianConverter converter) throws IOException {
+        long[] data = new long[SAMPLES];
+        for (int i = 0; i < SAMPLES; i++) {
+            data[i] = rand.nextLong();
+        }
+
+        StopWatch sw = new StopWatch();
+
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (long value : data) {
+            byteOutputStream.write(converter.longToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
+        for (int i = 0; i < SAMPLES; i++) {
+            byte[] buffer = byteInputStream.readNBytes(8);
+            converter.bytesToLong(buffer);
+        }
+        sw.stop();
+        double staticTime = sw.getMillisExact();
+
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (long value : data) {
+            out.writeLong(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
+        for (int i = 0; i < SAMPLES; i++) {
+            in.readLong();
+        }
+        sw.stop();
+        double streamTime = sw.getMillisExact();
+
+        printResult("long", staticTime, streamTime);
+    }
+
+    @SuppressWarnings("resource")
+    private static void benchmarkFloat(Random rand, EndianConverter converter) throws IOException {
+        float[] data = new float[SAMPLES];
+        for (int i = 0; i < SAMPLES; i++) {
+            data[i] = rand.nextFloat();
+        }
+
+        StopWatch sw = new StopWatch();
+
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (float value : data) {
+            byteOutputStream.write(converter.floatToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
+        for (int i = 0; i < SAMPLES; i++) {
+            byte[] buffer = byteInputStream.readNBytes(4);
+            converter.bytesToFloat(buffer);
+        }
+        sw.stop();
+        double staticTime = sw.getMillisExact();
+
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (float value : data) {
+            out.writeFloat(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
+        for (int i = 0; i < SAMPLES; i++) {
+            in.readFloat();
+        }
+        sw.stop();
+        double streamTime = sw.getMillisExact();
+
+        printResult("float", staticTime, streamTime);
+    }
+
+    @SuppressWarnings("resource")
+    private static void benchmarkDouble(Random rand, EndianConverter converter) throws IOException {
+        double[] data = new double[SAMPLES];
+        for (int i = 0; i < SAMPLES; i++) {
+            data[i] = rand.nextDouble();
+        }
+
+        StopWatch sw = new StopWatch();
+
+        // Static
+        sw.start();
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        for (double value : data) {
+            byteOutputStream.write(converter.doubleToBytes(value));
+        }
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
+        for (int i = 0; i < SAMPLES; i++) {
+            byte[] buffer = byteInputStream.readNBytes(8);
+            converter.bytesToDouble(buffer);
+        }
+        sw.stop();
+        double staticTime = sw.getMillisExact();
+
+        // Stream
+        sw.start();
+        ByteArrayOutputStream streamOut = new ByteArrayOutputStream();
+        EndianAwareOutputStream out = new EndianAwareOutputStream(streamOut, ENDIANNESS);
+        for (double value : data) {
+            out.writeDouble(value);
+        }
+        ByteArrayInputStream streamIn = new ByteArrayInputStream(streamOut.toByteArray());
+        EndianAwareInputStream in = new EndianAwareInputStream(streamIn, ENDIANNESS);
+        for (int i = 0; i < SAMPLES; i++) {
+            in.readDouble();
+        }
+        sw.stop();
+        double streamTime = sw.getMillisExact();
+
+        printResult("double", staticTime, streamTime);
     }
 }
-

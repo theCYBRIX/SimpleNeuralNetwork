@@ -33,7 +33,7 @@ public class OpenBinaryChannelRequest<E extends SimpleNeuralNetwork> extends Con
 
     @Override
     public ResponsePacket handle(JsonObject request, NetworkIDManager<E> context) throws Exception {
-        if(request.has(CHANNEL_PORT)){
+        if(request != null && request.has(CHANNEL_PORT)){
             int port = request.get(CHANNEL_PORT).getAsInt();
             context.openBinaryChannel(port);
         } else {

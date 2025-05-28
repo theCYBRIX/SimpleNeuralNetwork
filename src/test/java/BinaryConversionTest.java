@@ -31,21 +31,6 @@ public class BinaryConversionTest {
     public static void main(String[] args) {
         BinaryConversionTest tester = new BinaryConversionTest();
 
-        // Example implementations using ByteBuffer (Java standard)
-        // tester.setIntConverters(
-        //     (bytes, bigEndian) -> {
-        //         ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        //         buffer.order(bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-        //         return buffer.getInt();
-        //     },
-        //     (value, bigEndian) -> {
-        //         ByteBuffer buffer = ByteBuffer.allocate(4);
-        //         buffer.order(bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN);
-        //         buffer.putInt(value);
-        //         return buffer.array();
-        //     }
-        // );
-
         tester.setShortConverters(
             EndianConverter::bytesToShort,
             EndianConverter::shortToBytes
@@ -81,7 +66,6 @@ public class BinaryConversionTest {
 
         // Run tests
         tester.runAllTests();
-        // tester.runSelectedTests(true, false, false, false);
     }
     
     public void setShortConverters(BiFunction<byte[], Boolean, Short> bytesToShort, BiFunction<Short, Boolean, byte[]> shortToBytes) {
@@ -125,11 +109,7 @@ public class BinaryConversionTest {
         boolean match = value.equals(result);
         boolean byteMatch = validateBytesEqual(bytes, reference);
 
-        System.out.printf("\u001B[95m%s\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %s, Output: %s, Match: %s, BytesMatch: %s%n",
-        label, bigEndian ? "Big" : "Little", value, result,
-        match ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m",
-        byteMatch ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m");
-
+        printTestResult(label, bigEndian, value, result, match, byteMatch);
     }
 
     private void testIntConversion(int value, Boolean bigEndian) {
@@ -139,11 +119,7 @@ public class BinaryConversionTest {
         boolean match = value == result;
         boolean byteMatch = validateBytesEqual(bytes, reference);
 
-        System.out.printf("\u001B[95mINT\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %d, Output: %d, Match: %s, BytesMatch: %s%n",
-        bigEndian ? "Big" : "Little", value, result,
-        match ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m",
-        byteMatch ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m");
-
+       printTestResult("INT", bigEndian, value, result, match, byteMatch);
     }
 
     private void testLongConversion(long value, Boolean bigEndian) {
@@ -153,35 +129,35 @@ public class BinaryConversionTest {
         boolean match = value == result;
         boolean byteMatch = validateBytesEqual(bytes, reference);
 
-        System.out.printf("\u001B[95mLONG\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %d, Output: %d, Match: %s, BytesMatch: %s%n",
-        bigEndian ? "Big" : "Little", value, result,
-        match ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m",
-        byteMatch ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m");
-
+        printTestResult("LONG", bigEndian, value, result, match, byteMatch);
     }
 
-    private void testShortConversion(short value, Boolean littleEndian) {
-        byte[] bytes = shortToBytes.apply(value, littleEndian);
-        byte[] reference = getReferenceBytes(value, littleEndian);
-        short result = bytesToShort.apply(bytes, littleEndian);
+    private void testShortConversion(short value, Boolean bigEndian) {
+        byte[] bytes = shortToBytes.apply(value, bigEndian);
+        byte[] reference = getReferenceBytes(value, bigEndian);
+        short result = bytesToShort.apply(bytes, bigEndian);
         boolean match = value == result;
         boolean byteMatch = validateBytesEqual(bytes, reference);
 
-        System.out.printf("\u001B[95mSHORT\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %d, Output: %d, Match: %s, BytesMatch: %s%n",
-                littleEndian ? "Little" : "Big", value, result,
-                match ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m",
-                byteMatch ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m");
+        printTestResult("SHORT", bigEndian, value, result, match, byteMatch);
     }
 
-    private void testCharConversion(char value, Boolean littleEndian) {
-        byte[] bytes = charToBytes.apply(value, littleEndian);
-        byte[] reference = getReferenceBytes(value, littleEndian);
-        char result = bytesToChar.apply(bytes, littleEndian);
+    private void testCharConversion(char value, Boolean bigEndian) {
+        byte[] bytes = charToBytes.apply(value, bigEndian);
+        byte[] reference = getReferenceBytes(value, bigEndian);
+        char result = bytesToChar.apply(bytes, bigEndian);
         boolean match = value == result;
         boolean byteMatch = validateBytesEqual(bytes, reference);
 
-        System.out.printf("\u001B[95mCHAR\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %c, Output: %c, Match: %s, BytesMatch: %s%n",
-                littleEndian ? "Little" : "Big", value, result,
+        printTestResult("CHAR", bigEndian, value, result, match, byteMatch);
+    }
+
+    private void printTestResult(String type, boolean bigEndian, Object input, Object output, boolean match, boolean byteMatch) {
+        System.out.printf("\u001B[95m%s\u001B[0m [\u001B[94m%s endian\u001B[0m] - Input: %s, Output: %s, Match: %s, BytesMatch: %s%n",
+                type,
+                bigEndian ? "Big" : "Little",
+                input,
+                output,
                 match ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m",
                 byteMatch ? "\u001B[92mtrue\u001B[0m" : "\u001B[91mfalse\u001B[0m");
     }
@@ -225,8 +201,6 @@ public class BinaryConversionTest {
 
         return buffer != null ? buffer.array() : null;
     }
-
-
 
     public void runAllTests() {
         runSelectedTests(true, true, true, true, true, true);

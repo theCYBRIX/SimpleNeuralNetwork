@@ -90,7 +90,7 @@ public class LengthPrefixedReader extends BufferedInputStream {
      */
     public int readLengthPrefix() throws SocketException, IOException{
         byte[] lengthBytes = readBytes(4);
-        return EndianConverter.bytesToInt(lengthBytes, bigEndian);
+        return EndianConverter.bytesToInt(lengthBytes, 0, bigEndian);
     }
 
 

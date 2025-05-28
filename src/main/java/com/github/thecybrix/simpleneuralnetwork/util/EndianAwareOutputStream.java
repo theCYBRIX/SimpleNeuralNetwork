@@ -55,6 +55,55 @@ public class EndianAwareOutputStream implements Closeable {
         out.write(converter.charToBytes(value));
     }
 
+    public void writeCharArray(char[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 2];
+        for (int i = 0; i < array.length; i++) {
+            converter.charToBytes(array[i], bytes, i * 2);
+        }
+        out.write(bytes);
+    }
+
+    public void writeShortArray(short[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 2];
+        for (int i = 0; i < array.length; i++) {
+            converter.shortToBytes(array[i], bytes, i * 2);
+        }
+        out.write(bytes);
+    }
+
+    public void writeIntArray(int[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 4];
+        for (int i = 0; i < array.length; i++) {
+            converter.intToBytes(array[i], bytes, i * 4);
+        }
+        out.write(bytes);
+    }
+    
+    public void writeLongArray(long[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 8];
+        for (int i = 0; i < array.length; i++) {
+            converter.longToBytes(array[i], bytes, i * 8);
+        }
+        out.write(bytes);
+    }
+
+    public void writeFloatArray(float[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 4];
+        for (int i = 0; i < array.length; i++) {
+            converter.floatToBytes(array[i], bytes, i * 4);
+        }
+        out.write(bytes);
+    }
+
+    public void writeDoubleArray(double[] array) throws IOException, NullPointerException {
+        byte[] bytes = new byte[array.length * 8];
+        for (int i = 0; i < array.length; i++) {
+            converter.doubleToBytes(array[i], bytes, i * 8);
+        }
+        out.write(bytes);
+    }
+
+
     public void flush() throws IOException {
         out.flush();
     }
