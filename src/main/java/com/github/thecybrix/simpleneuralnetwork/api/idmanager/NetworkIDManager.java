@@ -174,6 +174,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
             new AddNetworkRequest<>(this),
             new RemoveNetworkRequest<>(this),
             new GetNetworkRequest<>(this),
+            new GetMetadataRequest<>(this),
             new OpenBinaryChannelRequest<>(this),
             new CloseBinaryChannelRequest<>(this)
         );

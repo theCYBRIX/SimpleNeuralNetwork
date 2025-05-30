@@ -43,10 +43,10 @@ public class JsonIOHandler implements IOHandler {
 
             ConsoleHandler consoleHandler = new ConsoleHandler();
             consoleHandler.setFormatter(new PrintlnFormatter());
-            consoleHandler.setLevel(Level.INFO);
+            consoleHandler.setLevel(Level.ALL);
             LOGGER.addHandler(consoleHandler);
 
-            LOGGER.setLevel(Level.ALL);
+            LOGGER.setLevel(Level.INFO);
         } catch (Exception e) {
             LOGGER.severe("Failed to initialize log handler.");
         }

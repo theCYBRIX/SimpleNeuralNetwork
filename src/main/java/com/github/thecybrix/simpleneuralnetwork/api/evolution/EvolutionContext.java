@@ -87,6 +87,8 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
     
 
     public void setup(int numNetworks, NetworkLayout layout, ParentSelection parentSelection, List<MutableNeuralNetwork> initialNetworks, boolean createMetadata) throws NoSuchElementException, IllegalArgumentException, DimensionsMismatchException, NullPointerException {
+        clearPrevGen();
+        clearCurrentGen();
 
         if(initialNetworks != null)
             NeuralNetworkTools.requireSameDimensions(initialNetworks);
@@ -98,7 +100,7 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         NETWORK_BUILDER.reset().withLayout(layout);
 
         evolutionManager = new SimpleEvolutionManager<>(NETWORK_BUILDER::build, parentSelector);
-        evolutionManager.setCreateMetadata(createMetadata);
+        evolutionManager.setGenerateMetadata(createMetadata);
 
         this.numNetworks = numNetworks;
 
@@ -245,6 +247,24 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         }
     }
 
+    protected void clearCurrentGen(){
+        synchronized(CURRENT_GEN_LOCK){
+            if(!neuralNetworks.isEmpty())
+                NETWORK_MANAGER.removeAll(neuralNetworks.keySet());
+
+            neuralNetworks = new HashMap<>();
+        }
+    }
+
+    private void clearPrevGen(){
+        synchronized(PREV_GEN_LOCK){
+            if(!previousGeneration.isEmpty())
+                NETWORK_MANAGER.removeAll(previousGeneration.keySet());
+              
+            previousGeneration = new HashMap<>();
+        }
+    }
+
     public Map<Integer, ScoredNetwork<E>> getPreviousGeneration(){
         return Collections.unmodifiableMap(previousGeneration);
     }
@@ -308,8 +328,12 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         return Collections.unmodifiableMap(neuralNetworks);
     }
     
-    public boolean isCreatingMetadata(){
-        return evolutionManager.isCreatingMetadata();
+    public void setGenerateMetadata(boolean enabled){
+        evolutionManager.setGenerateMetadata(enabled);;
+    }
+    
+    public boolean isGeneratingMetadata(){
+        return evolutionManager.isGeneratingMetadata();
     }
 
     public List<JsonRequestHandler> getRequestHandlers(){
@@ -317,8 +341,7 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
             new SetupRequest<>(this),
             new RandomizeNetworksRequest<>(this),
             new CreateNewGenerationRequest<>(this),
-            new GetBestNetworksRequest<>(this),
-            new GetMetadataRequest<>(this)
+            new GetBestNetworksRequest<>(this)
         );
     }
 }

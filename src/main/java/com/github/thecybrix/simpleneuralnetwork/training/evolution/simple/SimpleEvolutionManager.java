@@ -46,7 +46,7 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
     }
 
     private static <E extends MutableNeuralNetwork> OffspringGenerator<E> getAggressiveMutationProvider(Supplier<E> networkSupplier){
-        return new RandomMutation<E>(HIGH_WEIGHT_ADJUST_RATE, HIGH_BIAS_ADJUST_RATE, networkSupplier, "aggressiveMutation", true);
+        return new RandomMutation<E>(HIGH_WEIGHT_ADJUST_RATE, HIGH_BIAS_ADJUST_RATE, networkSupplier, "aggressive mutation", true);
     }
 
     private static <E extends MutableNeuralNetwork> OffspringGenerator<E> getCrossoverProvider(Supplier<E> networkSupplier){

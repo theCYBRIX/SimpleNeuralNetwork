@@ -35,9 +35,6 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
         }
 
         try {
-            Logger rootLogger = Logger.getLogger("");
-            rootLogger.removeHandler(rootLogger.getHandlers()[0]);
-
             FileHandler logFileHandler = new FileHandler("TestSaves\\SimpleNNServer.log", false);
             logFileHandler.setFormatter(new SimpleFormatter());
             logFileHandler.setLevel(Level.ALL);
@@ -49,7 +46,11 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
             LOGGER.addHandler(consoleHandler);
 
             LOGGER.setLevel(Level.ALL);
+            
+            Logger rootLogger = Logger.getLogger("");
+            rootLogger.removeHandler(rootLogger.getHandlers()[0]);
         } catch (Exception e) {
+            e.printStackTrace();
            LOGGER.severe("Failed to initialize log handler.");
         }
         

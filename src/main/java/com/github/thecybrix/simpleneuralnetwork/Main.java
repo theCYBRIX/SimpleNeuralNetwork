@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.Callable;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,7 +27,7 @@ public class Main implements Callable<Integer> {
     }
 
     final private static int DEFAULT_PORT = 3050; 
-    final private static String LOGGING_LEVELS = "{SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST}";
+    final private static String LOGGING_LEVELS = "SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST";
 
     final private static int ERR_INVALID_MODE = 2;
     
@@ -81,6 +79,11 @@ public class Main implements Callable<Integer> {
     }
 
     private static void runTCPServer(int port) throws Exception {
+        Logger serverLogger = Logger.getLogger(SimpleTCPServer.class.getName());
+        Logger ioHandlerLogger = Logger.getLogger(JsonIOHandler.class.getName());
+        
+        serverLogger.setLevel(Level.INFO);
+        ioHandlerLogger.setLevel(Level.INFO);
 
         MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder();
         SimpleTCPServer server = JsonAPIServiceFactory.createTCPServer(port, builder);
@@ -102,34 +105,32 @@ public class Main implements Callable<Integer> {
                         break;
 
                     case "logging":
-                        try {
-                            if(input.length < 2 || input.length > 2){
-                                println("Invalid arguments. Usage: logging " + LOGGING_LEVELS);
-                                break;
-                            }
-                            String levelString = input[1].toUpperCase();
-                            Level level = Level.parse(levelString);
-                            Logger logger = Logger.getLogger(SimpleTCPServer.class.getName());
-                            if(logger.getHandlers().length > 0){
-                                for(Handler handler : logger.getHandlers()){
-                                    if(handler instanceof ConsoleHandler){
-                                        handler.setLevel(level);
-                                    }
-                                }
-                            }
-                            logger = Logger.getLogger(JsonIOHandler.class.getName());
-                            if(logger.getHandlers().length > 0){
-                                for(Handler handler : logger.getHandlers()){
-                                    if(handler instanceof ConsoleHandler){
-                                        handler.setLevel(level);
-                                    }
-                                }
-                            }
-                            println("Logging level set to \"" + levelString + "\"");
-                            
-                        } catch (Exception e) {
-                            println("Invalid arguments. " + e.getMessage() + "\nUsage: logging " + LOGGING_LEVELS);
+
+                        if(input.length == 1){
+                            Level loggingLevel = serverLogger.getLevel();
+                            println(loggingLevel == null ? "[logging disabled]" : loggingLevel.getName());
+                            break;
                         }
+
+                        if(input.length > 2){
+                            println("Too many arguments. Usage: 'logging {level}'. Valid levels are: " + LOGGING_LEVELS + "\n");
+                            break;
+                        }
+
+                        String levelString = input[1].toUpperCase();
+                        Level level;
+                        
+                        try{
+                            level = Level.parse(levelString);
+                        } catch (IllegalArgumentException e) {
+                            println("Invalid logging level: '" + levelString + "'. Valid levels are: " + LOGGING_LEVELS + "\n");
+                            break;
+                        }
+
+                        serverLogger.setLevel(level);
+                        ioHandlerLogger.setLevel(level);
+                        
+                        println("Logging level set to: '" + levelString + "'");
                         break;
                     
                     case "clear":

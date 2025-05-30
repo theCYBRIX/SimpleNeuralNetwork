@@ -97,7 +97,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         updateNewGenerationFunction();
     }
     
-    public void setCreateMetadata(boolean enabled){
+    public void setGenerateMetadata(boolean enabled){
         if(enabled == createMetadata) return;
         createMetadata = enabled;
         updateNewGenerationFunction();
@@ -113,7 +113,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         if(parallel){
             return withMetadata ? new ParallelNewGenerationWithMetadata() : new ParallelNewGeneration();
         } else {
-            return withMetadata ? this::linearNewGeneration : this::linearNewGenerationWithMetadata;
+            return withMetadata ? this::linearNewGenerationWithMetadata : this::linearNewGeneration;
         }
     }
 
@@ -121,7 +121,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         return parallel;
     }
 
-    public boolean isCreatingMetadata() {
+    public boolean isGeneratingMetadata() {
         return createMetadata;
     }
 
@@ -186,7 +186,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
             OffspringGenerator<E> generator = offspringGenerators.get(i);
             List<ScoredNetwork<E>> offspring = createOffspringWithMetadata(parentNetworks, generator, networksPerProvider[i]);
 
-            offspring.addAll(offspring);
+            newGeneration.addAll(offspring);
         }
 
         return newGeneration;
