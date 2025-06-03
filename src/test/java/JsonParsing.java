@@ -10,7 +10,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
 import com.google.gson.Gson;
 
-public class JsonParsing extends TestingEnvironment {
+public class JsonParsing extends TestingTools {
     final public static Gson GSON = CustomGsonFactory.getInstance();
 
     public static void main(String... args){

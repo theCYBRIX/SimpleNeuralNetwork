@@ -71,7 +71,7 @@ public class ValueMappingContext<E extends MutableNeuralNetwork> extends Evoluti
     public void approximateDataSet(TrainingDataSet dataSet) throws IllegalArgumentException, InterruptedException, ExecutionException, NullPointerException{
         if(datasetTrainer != null) stopTraining();
         
-        ValueMappingTrainer<E> trainingScenario = ValueMappingTrainer.of(dataSet.inputs, dataSet.outputs, new ValueMappingTrainer.MeanSquaredError(), NETWORK_MANAGER.FORK_JOIN_POOL);
+        ValueMappingTrainer<E> trainingScenario = ValueMappingTrainer.of(dataSet.inputs, dataSet.outputs, new ValueMappingTrainer.MeanSquaredError(), NETWORK_MANAGER.forkJoinPool);
         datasetTrainer = new EvolutionaryTrainer<>(numNetworks, evolutionManager, trainingScenario);
         datasetTrainer.attachCallback(trainer -> {
             setCurrentGen(trainer.getNetworks());
@@ -79,7 +79,7 @@ public class ValueMappingContext<E extends MutableNeuralNetwork> extends Evoluti
         datasetTrainer.addAllScored(neuralNetworks.values());
         numTrainingSamples = dataSet.inputs.length;
         trainingEndTime = null;
-        dataTrainedNetworks = NETWORK_MANAGER.FORK_JOIN_POOL.submit(() -> {
+        dataTrainedNetworks = NETWORK_MANAGER.forkJoinPool.submit(() -> {
             datasetTrainer.run();
             trainingEndTime = Instant.now();
             setCurrentGen(new ArrayList<>(datasetTrainer.getNetworks()));

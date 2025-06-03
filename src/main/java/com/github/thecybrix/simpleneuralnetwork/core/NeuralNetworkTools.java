@@ -27,14 +27,14 @@ final public class NeuralNetworkTools {
 	private NeuralNetworkTools(){}
 
 	/**
-	 * @return A number "N" such that {@code (origin - maxDeviation) < N < (origin + maxDeviation) }.
+	 * @return A number "N" such that {@code (origin - maxDeviation) <= N <= (origin + maxDeviation) }.
 	 */
 	private static double randomOffset(double origin, double maxDeviation, Random random) throws NullPointerException {
-		return origin + random.nextDouble() * (random.nextBoolean() ? maxDeviation : -maxDeviation);
+		return origin + Math.min(Math.max(random.nextGaussian(), -1), 1) * maxDeviation;
 	}
 
 	/**
-	 * @return A number "N" such that {@code (origin - maxDeviation) < N < (origin + maxDeviation) }.
+	 * @return A number "N" such that {@code (origin - maxDeviation) <= N <= (origin + maxDeviation) }.
 	 */
 	private static double randomOffset(double origin, double maxDeviation) {
 		return randomOffset(origin, maxDeviation, RandomNumberGeneratorHolder.RANDOM);
@@ -58,6 +58,38 @@ final public class NeuralNetworkTools {
 		for (int i = 0; i < v1.length; i++)
 			destination[i] = v1[i] + v2[i];
     }
+
+	private static double computeLayerWeightStd(double[][] layerWeights) {
+		double sum = 0;
+		double sumSq = 0;
+		int count = 0;
+
+		for(double[] nodeWeights : layerWeights) {
+			for(double w : nodeWeights) {
+				sum += w;
+				sumSq += w * w;
+				count++;
+			}
+		}
+
+		double mean = sum / count;
+		double variance = (sumSq / count) - (mean * mean);
+		return Math.sqrt(Math.max(variance, 1e-8)); // avoid NaN or 0
+	}
+
+	private static double computeLayerBiasStd(double[] layerBiases) {
+		double sum = 0;
+		double sumSq = 0;
+
+		for(double b : layerBiases) {
+			sum += b;
+			sumSq += b * b;
+		}
+
+		double mean = sum / layerBiases.length;
+		double variance = (sumSq / layerBiases.length) - (mean * mean);
+		return Math.sqrt(Math.max(variance, 1e-8));
+	}
 
 
 	/*******************************************************************************************************************
@@ -220,19 +252,45 @@ final public class NeuralNetworkTools {
 		return mutations;
 	}
 
-	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate, Random random){
+	public static <E extends MutableNeuralNetwork> E mutate(E network, double weightScaleFactor, double biasScaleFactor, double mutationRate, Random random){
 		double[][][] weights = network.weights;
 		double[][] biases = network.biases;
 
-		for(int layer = 0; layer < weights.length; layer++)
-			for(int node = 0; node < weights[layer].length; node++){
-				if(random.nextDouble() < mutationRate) biases[layer][node] = randomOffset(biases[layer][node], maxBiasDeviation, random);
-				for(int weight = 0; weight < weights[layer][node].length; weight++)
-					if(random.nextDouble() < mutationRate) weights[layer][node][weight] = randomOffset(weights[layer][node][weight], maxWeightDeviation, random);
+		for(int layer = 0; layer < weights.length; layer++) {
+			// Compute std of weights and biases for the layer
+			double weightStd = computeLayerWeightStd(weights[layer]);
+			double biasStd = computeLayerBiasStd(biases[layer]);
+
+			for(int node = 0; node < weights[layer].length; node++) {
+				if(random.nextDouble() < mutationRate) {
+					biases[layer][node] = randomOffset(biases[layer][node], biasStd * biasScaleFactor, random);
+				}
+
+				for(int weight = 0; weight < weights[layer][node].length; weight++) {
+					if(random.nextDouble() < mutationRate) {
+						weights[layer][node][weight] = randomOffset(weights[layer][node][weight], weightStd * weightScaleFactor, random);
+					}
+				}
 			}
+		}
 
 		return network;
 	}
+
+
+	// public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate, Random random){
+	// 	double[][][] weights = network.weights;
+	// 	double[][] biases = network.biases;
+
+	// 	for(int layer = 0; layer < weights.length; layer++)
+	// 		for(int node = 0; node < weights[layer].length; node++){
+	// 			if(random.nextDouble() < mutationRate) biases[layer][node] = randomOffset(biases[layer][node], maxBiasDeviation, random);
+	// 			for(int weight = 0; weight < weights[layer][node].length; weight++)
+	// 				if(random.nextDouble() < mutationRate) weights[layer][node][weight] = randomOffset(weights[layer][node][weight], maxWeightDeviation, random);
+	// 		}
+
+	// 	return network;
+	// }
 
 	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate){
 		return mutate(network, maxWeightDeviation, maxBiasDeviation, mutationRate, RandomNumberGeneratorHolder.RANDOM);

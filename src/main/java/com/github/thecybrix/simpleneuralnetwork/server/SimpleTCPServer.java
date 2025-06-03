@@ -11,52 +11,19 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.FileHandler;
-import java.util.logging.Formatter;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-
+import com.github.thecybrix.simpleneuralnetwork.api.idmanager.NetworkIDManager;
 import com.github.thecybrix.simpleneuralnetwork.util.AutoRunnable;
 import com.github.thecybrix.simpleneuralnetwork.util.CallbackInvoker;
 
 public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPServer> {
-    final private static Logger LOGGER = Logger.getLogger(SimpleTCPServer.class.getName());
+    final private static AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
 
-    static {
-        class PrintlnFormatter extends Formatter{
-            @Override
-            public String format(LogRecord record) {
-                return record.getMessage() + "\n";
-            }
-        }
-
-        try {
-            FileHandler logFileHandler = new FileHandler("TestSaves\\SimpleNNServer.log", false);
-            logFileHandler.setFormatter(new SimpleFormatter());
-            logFileHandler.setLevel(Level.ALL);
-            LOGGER.addHandler(logFileHandler);
-
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setFormatter(new PrintlnFormatter());
-            consoleHandler.setLevel(Level.INFO);
-            LOGGER.addHandler(consoleHandler);
-
-            LOGGER.setLevel(Level.ALL);
-            
-            Logger rootLogger = Logger.getLogger("");
-            rootLogger.removeHandler(rootLogger.getHandlers()[0]);
-        } catch (Exception e) {
-            e.printStackTrace();
-           LOGGER.severe("Failed to initialize log handler.");
-        }
-        
-    }
-
+    final private Logger logger;
     final private LinkedList<Consumer<SimpleTCPServer>> CALLBACKS = new LinkedList<>();
+
 
     private IOHandler ioHandler;
 
@@ -66,12 +33,17 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
     private Thread runningThread = null;
 
     private int serverPort;
-    private volatile boolean closeRequested = false; 
+    private volatile boolean closeRequested = false;
 
     public SimpleTCPServer(int serverPort, IOHandler ioHandler) throws IllegalArgumentException, NullPointerException {
+        this(serverPort, ioHandler, Integer.toString(INSTANCE_COUNTER.incrementAndGet()));
+    }
+
+    public SimpleTCPServer(int serverPort, IOHandler ioHandler, String instanceID) throws IllegalArgumentException, NullPointerException {
         setPort(serverPort);
         this.ioHandler = Objects.requireNonNull(ioHandler, "IOHandler is null.");
         this.ioHandler.attachCallback(e -> { if(!(e instanceof SocketException)) logError(e); });
+        logger = Logger.getLogger(NetworkIDManager.class.getName() + "-" + Objects.requireNonNull(instanceID, "Instance ID is null."));
     }
 
     @Override
@@ -83,18 +55,18 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
             serverSocket = socket;
             running = true;
 
-            LOGGER.info("Server started.\nAddress: " + Inet4Address.getLocalHost().getHostAddress() + "\nPort: " + socket.getLocalPort() + "\n");
+            logger.info("Server started.\nAddress: " + Inet4Address.getLocalHost().getHostAddress() + "\nPort: " + socket.getLocalPort() + "\n");
 
             while(!closeRequested){
-                LOGGER.info("Waiting on connection...");
+                logger.info("Waiting on connection...");
 
                 client = socket.accept();
 
-                LOGGER.info("Client connected: " + client.getInetAddress());
+                logger.info("Client connected: " + client.getInetAddress());
 
                 ioHandler.handle(client.getInputStream(), client.getOutputStream());
 
-                LOGGER.info("Client disconnected: " + client.getInetAddress());
+                logger.info("Client disconnected: " + client.getInetAddress());
                 client = null;
             }
         } catch (SocketException e) {
@@ -105,17 +77,21 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
             running = false;
             runningThread = null;
             serverSocket = null;
-            LOGGER.info("Server shutdown.");
+            logger.info("Server shutdown.");
         }
     }
 
     private void logError(Exception e){
-        LOGGER.warning(e.getMessage());
-        LOGGER.fine(stackTraceToString(e));
+        logger.warning(e.getMessage());
+        logger.fine(stackTraceToString(e));
     }
 
     public IOHandler getIoHandler() {
         return ioHandler;
+    }
+
+    public Logger getLogger() {
+        return logger;
     }
 
     private void setPort(int port) throws IllegalArgumentException {
@@ -147,15 +123,15 @@ public class SimpleTCPServer implements AutoRunnable, CallbackInvoker<SimpleTCPS
         return Optional.ofNullable(runningThread);
     }
 
+    @Override
+    public List<Consumer<SimpleTCPServer>> getCallbackList() {
+        return CALLBACKS;
+    }
+
     private static String stackTraceToString(Exception e){
         StringWriter stackTrace = new StringWriter();
         e.printStackTrace(new PrintWriter(stackTrace));
         return stackTrace.toString();
-    }
-
-    @Override
-    public List<Consumer<SimpleTCPServer>> getCallbackList() {
-        return CALLBACKS;
     }
     
 }

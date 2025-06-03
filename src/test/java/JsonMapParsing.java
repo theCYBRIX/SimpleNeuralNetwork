@@ -4,7 +4,7 @@ import java.util.Map;
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
 import com.google.gson.Gson;
 
-public class JsonMapParsing extends TestingEnvironment {
+public class JsonMapParsing extends TestingTools {
     
     
     public static void main(String[] args) {

@@ -14,7 +14,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder
 import com.github.thecybrix.simpleneuralnetwork.server.JsonIOHandler;
 import com.github.thecybrix.simpleneuralnetwork.server.SimpleTCPServer;
 
-public class APIServerTest extends TestingEnvironment {
+public class APIServerTest extends TestingTools {
 
     private static int port = 3050;
     private static int numInputs = 14,

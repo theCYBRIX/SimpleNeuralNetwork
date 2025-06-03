@@ -37,7 +37,7 @@ import com.github.thecybrix.simpleneuralnetwork.training.evolution.ValueMappingT
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleEvolutionaryTrainer;
 import com.google.gson.JsonParseException;
 
-final public class LearnSineFunction extends TestingEnvironment {
+final public class LearnSineFunction extends TestingTools {
     
     //Settings
     private static boolean continueTraining = false;
@@ -267,7 +267,7 @@ final public class LearnSineFunction extends TestingEnvironment {
     static MutableNeuralNetwork loadNetworkFromFile(String networkPath, FileType fileType) throws FileNotFoundException, IOException, JsonParseException{
         switch (fileType) {
             case JSON:
-                return TestingEnvironment.networkFromJson(networkPath, MutableNeuralNetwork.class);
+                return TestingTools.networkFromJson(networkPath, MutableNeuralNetwork.class);
             case SNN:
                 return NeuralNetworkBuilder.loadBinary(networkPath + ".snn", new MutableNeuralNetworkBuilder()).build();
             default:

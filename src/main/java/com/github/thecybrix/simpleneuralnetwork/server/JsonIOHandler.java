@@ -1,22 +1,20 @@
 package com.github.thecybrix.simpleneuralnetwork.server;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.FileHandler;
-import java.util.logging.Formatter;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-
 import com.github.thecybrix.simpleneuralnetwork.exceptions.EndpointConflictException;
 import com.github.thecybrix.simpleneuralnetwork.util.LengthPrefixedReader;
 import com.github.thecybrix.simpleneuralnetwork.util.LengthPrefixedWriter;
@@ -25,39 +23,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 public class JsonIOHandler implements IOHandler {
-    final private static Logger LOGGER = Logger.getLogger(JsonIOHandler.class.getName());
-
-    static {
-        class PrintlnFormatter extends Formatter{
-            @Override
-            public String format(LogRecord record) {
-                return record.getMessage() + "\n";
-            }
-        }
-
-        try {
-            FileHandler logFileHandler = new FileHandler("TestSaves\\APIIOHandler.log", false);
-            logFileHandler.setFormatter(new SimpleFormatter());
-            logFileHandler.setLevel(Level.ALL);
-            LOGGER.addHandler(logFileHandler);
-
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setFormatter(new PrintlnFormatter());
-            consoleHandler.setLevel(Level.ALL);
-            LOGGER.addHandler(consoleHandler);
-
-            LOGGER.setLevel(Level.INFO);
-        } catch (Exception e) {
-            LOGGER.severe("Failed to initialize log handler.");
-        }
-        
-    }
+    final private static AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
 
     final public static String[] REQUEST_FIELDS = new String[]{
         "request",
         "payload"
     };
 
+    final private Logger logger;
     final private LinkedList<Consumer<Exception>> CALLBACKS = new LinkedList<>();
     final private HashMap<String, JsonRequestHandler> REQUEST_HANDLERS = new HashMap<>();
     final private DecimalFormat loggingDecimalFormat = new DecimalFormat("#.####");
@@ -66,11 +39,17 @@ public class JsonIOHandler implements IOHandler {
     private StopWatch executionTimer;
     private StopWatch dialogTimer;
     private boolean logExecutionTimes = false;
+    private HandleFunction handleFunction = this::handleDirect;
 
     private volatile boolean keepAlive = false;
 
     public JsonIOHandler() {
+        this(Integer.toString(INSTANCE_COUNTER.incrementAndGet()));
+    }
+
+    public JsonIOHandler(String instanceID) {
         addRequestHandler(new EndpointsRequest(this));
+        logger = Logger.getLogger(JsonIOHandler.class.getName() + "-" + Objects.requireNonNull(instanceID, "Instance ID is null."));
     }
 
     @Override
@@ -85,66 +64,95 @@ public class JsonIOHandler implements IOHandler {
 
                 int requestLength = reader.readLengthPrefix();
 
-                boolean timersActive = logExecutionTimes && LOGGER.isLoggable(Level.INFO);
-                if(timersActive){
-                    dialogTimer.start();
-                    executionTimer.start();
-                }
-
-                String request = reader.readString(requestLength);
-
-                if(timersActive){
-                    executionTimer.stop();
-                    LOGGER.info("Reading: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
-                }
-
-                if(LOGGER.isLoggable(Level.FINEST))
-                    LOGGER.finest("Request received:\n" + request);
-
-                if(timersActive){
-                    executionTimer.start();
-                }
-                ResponsePacket responsePacket = handleRequest(request);
-                if(timersActive){
-                    executionTimer.stop();
-                    LOGGER.info("Processing: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
-                    executionTimer.start();
-                }
-                
-                String response = RequestHandlerUtils.GSON.toJson(responsePacket);
-                if(timersActive){
-                    executionTimer.stop();
-                    LOGGER.info("Serializing: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
-                    executionTimer.start();
-                }
-
-                writer.writeString(response);
-                writer.flush();
-
-                if(timersActive){
-                    executionTimer.stop();
-                    dialogTimer.stop();
-                    LOGGER.info("Sending: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
-                    LOGGER.info("Total Handle Time: " + loggingDecimalFormat.format(dialogTimer.getMillisExact()) + "ms");
-                }
-
-                if(LOGGER.isLoggable(Level.FINEST))
-                    LOGGER.finest("Response packet:\n" + response);
+                handleFunction.handle(reader, writer, requestLength);
             }
         } catch (Exception e) {
             logError(e);
         }
     }
 
+    private void handleDirect(LengthPrefixedReader reader, LengthPrefixedWriter writer, int length) throws SocketException, IOException{
+        String request = reader.readString(length);
+
+        if(logger.isLoggable(Level.FINEST))
+            logger.finest("Request received:\n" + request);
+        
+        ResponsePacket responsePacket = handleRequest(request);
+
+        String response = RequestHandlerUtils.GSON.toJson(responsePacket);
+
+        writer.writeString(response);
+        writer.flush();
+
+        if(logger.isLoggable(Level.FINEST))
+            logger.finest("Response packet:\n" + response);
+
+    }
+
+    private void handleTimed(LengthPrefixedReader reader, LengthPrefixedWriter writer, int length) throws SocketException, IOException{
+
+        boolean timersActive = logExecutionTimes && logger.isLoggable(Level.FINE);
+        if(timersActive){
+            dialogTimer.start();
+            executionTimer.start();
+        }
+
+        String request = reader.readString(length);
+
+        if(timersActive){
+            executionTimer.stop();
+            logger.fine("Reading: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
+        }
+
+        if(logger.isLoggable(Level.FINEST))
+            logger.finest("Request received:\n" + request);
+
+        if(timersActive){
+            executionTimer.start();
+        }
+        ResponsePacket responsePacket = handleRequest(request);
+        if(timersActive){
+            executionTimer.stop();
+            logger.fine("Processing: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
+            executionTimer.start();
+        }
+        
+        String response = RequestHandlerUtils.GSON.toJson(responsePacket);
+        if(timersActive){
+            executionTimer.stop();
+            logger.fine("Serializing: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
+            executionTimer.start();
+        }
+
+        writer.writeString(response);
+        writer.flush();
+
+        if(timersActive){
+            executionTimer.stop();
+            dialogTimer.stop();
+            logger.fine("Sending: " + loggingDecimalFormat.format(executionTimer.getMillisExact()) + "ms");
+            logger.fine("Total Handle Time: " + loggingDecimalFormat.format(dialogTimer.getMillisExact()) + "ms");
+        }
+
+        if(logger.isLoggable(Level.FINEST))
+            logger.finest("Response sent:\n" + response);
+        
+    }
+
     public void stop(){
         keepAlive = false;
     }
 
+    public void setDialogTimeLogging(boolean enabled){
+        this.handleFunction = enabled ? this::handleTimed : this::handleDirect;
+    }
+
     private void logError(Exception e){
-        LOGGER.warning(e.getMessage());
-        LOGGER.fine(RequestHandlerUtils.stackTraceToString(e));
+        logger.warning(e.getMessage());
+        logger.fine(RequestHandlerUtils.stackTraceToString(e));
         processCallbacks(e);
     }
+
 
     private ResponsePacket handleRequest(String request) {
         try {
@@ -162,7 +170,7 @@ public class JsonIOHandler implements IOHandler {
             return handler.handle(data);
             
         } catch (Exception e) {
-            LOGGER.warning("Failed to handle request: " + e.getClass().getSimpleName());
+            logger.warning("Failed to handle request: " + e.getClass().getSimpleName());
             logError(e);
             return ResponsePacket.error(e.getClass().getSimpleName(), e.getMessage(), RequestHandlerUtils.stackTraceToString(e));
         }
@@ -197,7 +205,7 @@ public class JsonIOHandler implements IOHandler {
         REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }
 
-    public void addRequestHandlers(List<JsonRequestHandler> handlers) throws EndpointConflictException, NullPointerException {
+    public void addRequestHandlers(Collection<JsonRequestHandler> handlers) throws EndpointConflictException, NullPointerException {
         if(handlers == null) throw new NullPointerException("Request handlers list is null.");
         if(handlers.parallelStream().anyMatch(x -> x == null)) throw new NullPointerException("Request handlers list contains null.");
 
@@ -232,8 +240,8 @@ public class JsonIOHandler implements IOHandler {
             REQUEST_HANDLERS.put(handler.getEndpoint(), handler);
     }
     
-    public boolean removeRequestHandler(JsonRequestHandler handler){
-        if(REQUEST_HANDLERS.remove(handler.getEndpoint(), handler)) return true;
+    public boolean removeRequestHandler(JsonRequestHandler handler) throws NullPointerException{
+        if(REQUEST_HANDLERS.remove(Objects.requireNonNull(handler, "Handler is null.").getEndpoint(), handler)) return true;
         if(REQUEST_HANDLERS.containsValue(handler))
             return REQUEST_HANDLERS.values().remove(handler);
         return false;
@@ -242,10 +250,24 @@ public class JsonIOHandler implements IOHandler {
     public JsonRequestHandler removeRequestHandler(String endpoint){
         return REQUEST_HANDLERS.remove(endpoint);
     }
+    
+    public void removeRequestHandlers(Collection<JsonRequestHandler> handlers){
+        for (JsonRequestHandler jsonRequestHandler : handlers)
+            removeRequestHandler(jsonRequestHandler);
+    }
+
+    public Logger getLogger() {
+        return logger;
+    }
 
     @Override
     public List<Consumer<Exception>> getCallbackList() {
         return CALLBACKS;
+    }
+
+    @FunctionalInterface
+    private static interface HandleFunction {
+        public void handle(LengthPrefixedReader reader, LengthPrefixedWriter writer, int length) throws SocketException, IOException;
     }
     
 }

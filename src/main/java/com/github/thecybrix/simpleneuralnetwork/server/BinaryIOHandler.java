@@ -8,15 +8,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.FileHandler;
-import java.util.logging.Formatter;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 import com.github.thecybrix.simpleneuralnetwork.exceptions.EndpointConflictException;
 import com.github.thecybrix.simpleneuralnetwork.util.EndianAwareInputStream;
@@ -26,41 +22,23 @@ import com.github.thecybrix.simpleneuralnetwork.util.Endianness;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 public class BinaryIOHandler implements IOHandler {
-    final private static Logger LOGGER = Logger.getLogger(JsonIOHandler.class.getName());
-
+    final private static AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
     final public static byte ERR_UNDEFINED_ENDPOINT = 1;
-
-    static {
-        class PrintlnFormatter extends Formatter{
-            @Override
-            public String format(LogRecord record) {
-                return record.getMessage() + "\n";
-            }
-        }
-
-        try {
-            FileHandler logFileHandler = new FileHandler("TestSaves\\BinaryIOHandler.log", false);
-            logFileHandler.setFormatter(new SimpleFormatter());
-            logFileHandler.setLevel(Level.ALL);
-            LOGGER.addHandler(logFileHandler);
-
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setFormatter(new PrintlnFormatter());
-            consoleHandler.setLevel(Level.INFO);
-            LOGGER.addHandler(consoleHandler);
-
-            LOGGER.setLevel(Level.ALL);
-        } catch (Exception e) {
-           LOGGER.severe("Failed to initialize log handler.");
-        }
-        
-    }
+    
+    final private Logger logger;
 
     final private ArrayList<Consumer<Exception>> CALLBACKS = new ArrayList<>(0);
-
     final private Int2ObjectOpenHashMap<BinaryRequestHandler> REQUEST_HANDLERS = new Int2ObjectOpenHashMap<>();
 
     private volatile boolean keepAlive = false;
+
+    public BinaryIOHandler(){
+        this(Integer.toString(INSTANCE_COUNTER.incrementAndGet()));
+    }
+
+    public BinaryIOHandler(String instanceID){
+        logger = Logger.getLogger(BinaryIOHandler.class.getName() + "-" + Objects.requireNonNull(instanceID, "Instance ID is null."));
+    }
 
     public int getRequestHandlerCount(){
         return REQUEST_HANDLERS.size();
@@ -111,8 +89,8 @@ public class BinaryIOHandler implements IOHandler {
     }
 
     private void logError(Exception e){
-        LOGGER.warning(e.getMessage());
-        LOGGER.fine(RequestHandlerUtils.stackTraceToString(e));
+        logger.warning(e.getMessage());
+        logger.fine(RequestHandlerUtils.stackTraceToString(e));
         processCallbacks(e);
     }
     
@@ -166,6 +144,10 @@ public class BinaryIOHandler implements IOHandler {
     
     public BinaryRequestHandler removeRequestHandler(int endpoint){
         return REQUEST_HANDLERS.remove(endpoint);
+    }
+
+    public Logger getLogger() {
+        return logger;
     }
 
     @Override

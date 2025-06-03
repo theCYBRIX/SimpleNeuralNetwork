@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -25,16 +26,28 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIContext {
-    final public static Logger LOGGER = Logger.getLogger(NetworkIDManager.class.getName());
+    final private static AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
     final public static int DEFAULT_IO_PORT = 3075;
-
-    final public ForkJoinPool FORK_JOIN_POOL = new ForkJoinPool();
+    
+    final private Logger logger;
+    final public ForkJoinPool forkJoinPool = new ForkJoinPool();
 
     protected Map<Integer, E> neuralNetworks = new HashMap<>();
     protected IDManager idManager = new IDManager();
     
     private SimpleTCPServer binaryChannel = null;
 
+    public NetworkIDManager(){
+        this(Integer.toString(INSTANCE_COUNTER.incrementAndGet()));
+    }
+
+    public NetworkIDManager(String instanceID){
+        logger = Logger.getLogger(NetworkIDManager.class.getName() + "-" + Objects.requireNonNull(instanceID, "Instance ID is null."));
+    }
+
+    public Logger getLogger() {
+        return logger;
+    }
     
     public NetworkLayout getLayout(int id) throws NoSuchElementException {
         return NetworkLayout.of(getNetwork(id));
@@ -106,7 +119,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
         Int2ObjectMap<double[]> outputs = new Int2ObjectOpenHashMap<double[]>(inputData.size());
         ArrayList<Integer> failedIds = new ArrayList<>();
 
-        FORK_JOIN_POOL.submit(
+        forkJoinPool.submit(
             () -> inputData.int2ObjectEntrySet().parallelStream().forEach(
                 (entry) -> {
                     int id = entry.getIntKey();
@@ -126,7 +139,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
         ).join();
         
         if(!failedIds.isEmpty())
-            LOGGER.warning("Failed to process forward passes: " + failedIds);
+            logger.warning("Failed to process forward passes: " + failedIds);
 
         return outputs;
     }

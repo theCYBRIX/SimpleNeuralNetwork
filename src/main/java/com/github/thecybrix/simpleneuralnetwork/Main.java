@@ -4,12 +4,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.Callable;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import com.github.thecybrix.simpleneuralnetwork.api.JsonAPIServiceFactory;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder;
-import com.github.thecybrix.simpleneuralnetwork.server.JsonIOHandler;
 import com.github.thecybrix.simpleneuralnetwork.server.SimpleStdioServer;
 import com.github.thecybrix.simpleneuralnetwork.server.SimpleTCPServer;
 
@@ -79,12 +82,20 @@ public class Main implements Callable<Integer> {
     }
 
     private static void runTCPServer(int port) throws Exception {
-        Logger serverLogger = Logger.getLogger(SimpleTCPServer.class.getName());
-        Logger ioHandlerLogger = Logger.getLogger(JsonIOHandler.class.getName());
-        
-        serverLogger.setLevel(Level.INFO);
-        ioHandlerLogger.setLevel(Level.INFO);
+        Logger logger = Logger.getLogger("");
+        for(Handler handler : logger.getHandlers())
+            logger.removeHandler(handler);
 
+        ConsoleHandler consoleHandler = new ConsoleHandler();
+        consoleHandler.setFormatter(new Formatter() {
+            @Override
+            public String format(LogRecord record) {
+                return record.getMessage() + "\n";
+            }
+        });
+        logger.addHandler(consoleHandler);
+        logger.setLevel(Level.INFO);
+        
         MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder();
         SimpleTCPServer server = JsonAPIServiceFactory.createTCPServer(port, builder);
         server.start(SimpleTCPServer.class.getSimpleName());
@@ -105,9 +116,13 @@ public class Main implements Callable<Integer> {
                         break;
 
                     case "logging":
+                        if(logger == null){
+                            println("There is no logger instantiated.");
+                            break;
+                        }
 
                         if(input.length == 1){
-                            Level loggingLevel = serverLogger.getLevel();
+                            Level loggingLevel = logger.getLevel();
                             println(loggingLevel == null ? "[logging disabled]" : loggingLevel.getName());
                             break;
                         }
@@ -127,8 +142,7 @@ public class Main implements Callable<Integer> {
                             break;
                         }
 
-                        serverLogger.setLevel(level);
-                        ioHandlerLogger.setLevel(level);
+                        logger.setLevel(level);
                         
                         println("Logging level set to: '" + levelString + "'");
                         break;

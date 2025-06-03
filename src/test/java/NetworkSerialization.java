@@ -12,7 +12,7 @@ import com.github.thecybrix.simpleneuralnetwork.serialization.binary.NetworkSeri
 import com.github.thecybrix.simpleneuralnetwork.serialization.json.CustomGsonFactory;
 import com.google.gson.Gson;
 
-public class NetworkSerialization extends TestingEnvironment {
+public class NetworkSerialization extends TestingTools {
     final public static Gson GSON = CustomGsonFactory.getInstance();
 
     public static void main(String... args) throws FileAlreadyExistsException, SecurityException, NullPointerException, IOException{

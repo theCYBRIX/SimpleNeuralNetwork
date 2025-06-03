@@ -344,4 +344,5 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
             new GetBestNetworksRequest<>(this)
         );
     }
+
 }

@@ -7,6 +7,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.function.Consumer;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
@@ -14,7 +18,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.serialization.binary.NetworkSerializer;
 import com.google.gson.JsonParseException;
 
-public abstract class TestingEnvironment {
+public abstract class TestingTools {
 
     public enum FileType {
         SNN,
@@ -27,6 +31,13 @@ public abstract class TestingEnvironment {
 
     static void println(Object obj){
         println(obj.toString());
+    }
+
+    public static void addFileLogHandler(Logger logger, String filePath, boolean append) throws IOException{
+        FileHandler logFileHandler = new FileHandler(filePath, append);
+        logFileHandler.setFormatter(new SimpleFormatter());
+        logFileHandler.setLevel(Level.ALL);
+        logger.addHandler(logFileHandler);
     }
 
     public static String arrayToString(double[] array){

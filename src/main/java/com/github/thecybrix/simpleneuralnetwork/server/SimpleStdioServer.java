@@ -5,42 +5,28 @@ import java.io.StringWriter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 import com.github.thecybrix.simpleneuralnetwork.util.CallbackInvoker;
 
 public class SimpleStdioServer implements Runnable, CallbackInvoker<SimpleStdioServer>{
-    final private static Logger LOGGER = Logger.getLogger(SimpleStdioServer.class.getName());
+    final private static AtomicInteger INSTANCE_COUNTER = new AtomicInteger();
 
-    static {
-
-        try {
-            Logger rootLogger = Logger.getLogger("");
-            rootLogger.removeHandler(rootLogger.getHandlers()[0]);
-
-            FileHandler logFileHandler = new FileHandler("TestSaves\\SimpleNNConsole.log", false);
-            logFileHandler.setFormatter(new SimpleFormatter());
-            logFileHandler.setLevel(Level.ALL);
-            LOGGER.addHandler(logFileHandler);
-
-            LOGGER.setLevel(Level.ALL);
-        } catch (Exception e) {
-           LOGGER.severe("Failed to initialize log handler.");
-        }
-        
-    }
-
+    final private Logger logger;
 
     final private LinkedList<Consumer<SimpleStdioServer>> CALLBACKS = new LinkedList<>();
 
     private IOHandler ioHandler;
 
     public SimpleStdioServer(IOHandler ioHandler){
+        this(ioHandler, Integer.toString(INSTANCE_COUNTER.incrementAndGet()));
+    }
+
+    public SimpleStdioServer(IOHandler ioHandler, String instanceID){
         this.ioHandler = Objects.requireNonNull(ioHandler, "IOHandler is null.");
+        logger = Logger.getLogger(SimpleStdioServer.class.getName() + "-" + Objects.requireNonNull(instanceID, "Instance ID is null."));
     }
 
     @Override
@@ -48,7 +34,7 @@ public class SimpleStdioServer implements Runnable, CallbackInvoker<SimpleStdioS
         if (System.in == null) throw new IllegalStateException("No InputStream associated with the current JVM.");
         if (System.out == null) throw new IllegalStateException("No OutputStream associated with the current JVM.");
 
-        LOGGER.info("SimpleNNConsole started.");
+        logger.info("SimpleNNConsole started.");
 
         try {
             ioHandler.handle(System.in, System.out);
@@ -56,27 +42,32 @@ public class SimpleStdioServer implements Runnable, CallbackInvoker<SimpleStdioS
             logError(e);
         }
 
-        LOGGER.info("SimpleNNConsole closed.");
+        logger.info("SimpleNNConsole closed.");
     }
 
     private void logError(Exception e) {
-        LOGGER.warning(e.getMessage());
-        LOGGER.fine(stackTraceToString(e));
+        logger.warning(e.getMessage());
+        logger.fine(stackTraceToString(e));
     }
 
     public IOHandler getIoHandler() {
         return ioHandler;
     }
 
-    private static String stackTraceToString(Exception e){
-        StringWriter stackTrace = new StringWriter();
-        e.printStackTrace(new PrintWriter(stackTrace));
-        return stackTrace.toString();
+
+    public Logger getLogger() {
+        return logger;
     }
 
     @Override
     public List<Consumer<SimpleStdioServer>> getCallbackList() {
         return CALLBACKS;
+    }
+
+    private static String stackTraceToString(Exception e){
+        StringWriter stackTrace = new StringWriter();
+        e.printStackTrace(new PrintWriter(stackTrace));
+        return stackTrace.toString();
     }
 
 }
