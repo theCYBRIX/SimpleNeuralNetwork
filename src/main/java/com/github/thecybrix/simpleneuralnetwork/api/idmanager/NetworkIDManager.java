@@ -104,6 +104,7 @@ public class NetworkIDManager<E extends SimpleNeuralNetwork> implements APIConte
         BinaryIOHandler ioHandler = new BinaryIOHandler();
         ioHandler.addRequestHandler(new BinaryProcessInputsRequest<>(this));
         binaryChannel = new SimpleTCPServer(port, ioHandler);
+        binaryChannel.getLogger().setUseParentHandlers(false);
         binaryChannel.start(BinaryIOHandler.class.getSimpleName());
         return binaryChannel;
     }

@@ -16,11 +16,11 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
 
 	final private static Fraction DEF_PARENT_FRACTION = Fraction.of(5, 100);
 
-	final private static byte ELITE_RATIO_TERM = 5;
-	final private static byte SUBTLE_MUTATION_RATIO_TERM = 35;
+	final private static byte ELITE_RATIO_TERM = 3;
+	final private static byte SUBTLE_MUTATION_RATIO_TERM = 30;
 	final private static byte MODERATE_MUTATION_TERM = 30;
-	final private static byte AGGRESSIVE_MUTATION_RATIO_TERM = 15;
-	final private static byte CROSSOVER_RATIO_TERM = 15;
+	final private static byte AGGRESSIVE_MUTATION_RATIO_TERM = 30;
+	final private static byte CROSSOVER_RATIO_TERM = 7;
 
 	final private static float HIGH_BIAS_ADJUST_RATE = 2f,
                                MEDIUM_BIAS_ADJUST_RATE = 0.08f,
