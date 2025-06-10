@@ -366,7 +366,7 @@ final public class LearnSineFunction extends TestingTools {
     }
 
     private class GraphUpdater implements Runnable{
-        Optional<Double> previousBestScore = Optional.empty();
+        OptionalDouble previousBestScore = OptionalDouble.empty();
 
         @Override
         public void run() {
@@ -375,7 +375,7 @@ final public class LearnSineFunction extends TestingTools {
             double currentBestScore = getBestScore().getAsDouble();
 
             if(previousBestScore.isPresent()){
-                if(currentBestScore >= previousBestScore.get()) return;
+                if(currentBestScore >= previousBestScore.getAsDouble()) return;
             }
 
             
@@ -398,7 +398,7 @@ final public class LearnSineFunction extends TestingTools {
     }
 
     private class StatusUpdater implements Runnable {
-        private Optional<Double> previousBestScore = Optional.empty();
+        private OptionalDouble previousBestScore = OptionalDouble.empty();
 
         public synchronized void run(){
             if(getBestScore().isEmpty()) return;
@@ -415,9 +415,9 @@ final public class LearnSineFunction extends TestingTools {
                 }
             }
 
-            if(previousBestScore.isEmpty() || (previousBestScore.get() > currentBestScore)){
+            if(previousBestScore.isEmpty() || (previousBestScore.getAsDouble() > currentBestScore)){
                 println(getStatus());
-                previousBestScore = Optional.of(currentBestScore);
+                previousBestScore = OptionalDouble.of(currentBestScore);
             }
         }
     }

@@ -11,7 +11,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizer;
 import com.github.thecybrix.simpleneuralnetwork.core.InputNormalizers;
 
 public abstract class BinaryStorageManager {
-    final protected static String FILE_EXTENTION = ".snn";
+    final protected static String FILE_EXTENSION = ".snn";
 
     final protected static Map<ActivationFunction, String> ACTIVATION_FUNCTION_NAMES = Map.of(ActivationFunctions.LINEAR, "linear", ActivationFunctions.ReLU, "ReLU", ActivationFunctions.SIGMOID, "Sigmoid", ActivationFunctions.TANH, "TanH");
     final protected static Map<InputNormalizer, String> INPUT_NORMALIZER_NAMES = Map.of(InputNormalizers.NONE, "None", InputNormalizers.BATCH, "batch", InputNormalizers.MIN_MAX, "MinMax");

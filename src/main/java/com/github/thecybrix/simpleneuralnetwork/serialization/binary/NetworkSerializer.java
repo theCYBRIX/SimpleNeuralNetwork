@@ -32,7 +32,7 @@ public class NetworkSerializer extends BinaryStorageManager {
         Objects.requireNonNull(network, "Network is null.");
         Objects.requireNonNull(filePath, "File path is null.");
 
-        if(!filePath.endsWith(FILE_EXTENTION)) filePath += FILE_EXTENTION;
+        if(!filePath.endsWith(FILE_EXTENSION)) filePath += FILE_EXTENSION;
 
         File saveFile = new File(filePath);
         if(saveFile.exists()){

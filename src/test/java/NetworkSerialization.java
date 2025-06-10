@@ -16,8 +16,10 @@ public class NetworkSerialization extends TestingTools {
     final public static Gson GSON = CustomGsonFactory.getInstance();
 
     public static void main(String... args) throws FileAlreadyExistsException, SecurityException, NullPointerException, IOException{
+        boolean makeResultsFalse = false;
+
         MutableNeuralNetwork deserializedNetwork, originalNetwork;
-        String file_path = "test.snn";
+        String file_path = "TestSaves\\test.snn";
 
         NetworkSerializer serializer = new NetworkSerializer();
         NetworkDeserializer deserializer = new NetworkDeserializer();
@@ -31,19 +33,36 @@ public class NetworkSerialization extends TestingTools {
         originalNetwork = new MutableNeuralNetworkBuilder(layout).build();
         NeuralNetworkTools.randomizeWeightsAndBiases(originalNetwork);
 
-        serializer.save(originalNetwork, file_path, true);
+        if(makeResultsFalse){
+            layout = new NetworkLayoutBuilder()
+                        .withInputLayer(2)
+                        .withOutputLayer(4)
+                        .addLayers(4, 2, ActivationFunctions.TANH)
+                        .build();
+            deserializedNetwork = new MutableNeuralNetworkBuilder(layout).build();
+            print(formatColorized("\nNOTICE: ", RED) + "Intentionally making results false");
 
-        deserializedNetwork = deserializer.load(file_path, new MutableNeuralNetworkBuilder()).build();
+        } else {
+            serializer.save(originalNetwork, file_path, true);
+            deserializedNetwork = deserializer.load(file_path, new MutableNeuralNetworkBuilder()).build();
+        }
 
-        println("\n\nOriginal:\n" + NetworkLayout.of(originalNetwork));
-        println("\n\nFrom file:\n" + NetworkLayout.of(deserializedNetwork));
+        println("\n\nShould be true: " + formatBoolean(originalNetwork.equals(deserializedNetwork)));
 
-        println("\nShould be true: " + originalNetwork.equals(deserializedNetwork));
-
+        printSideBySide(
+            formatColorized("\nOriginal:", BLUE), NetworkLayout.of(originalNetwork).toString(),
+            formatColorized("From file:", BLUE), NetworkLayout.of(deserializedNetwork).toString()
+        );
         
-        println(networkToString(originalNetwork));
-        println("\n");
-        println(networkToString(deserializedNetwork));
+        printSideBySide(
+            formatColorized("\nOriginal:", BLUE), networkToString(originalNetwork),
+            formatColorized("From file:", BLUE), networkToString(deserializedNetwork)
+        );
+
+        if(makeResultsFalse)
+            println(formatColorized("Intentionally False", RED));
+
+        println();
     }
 
     
