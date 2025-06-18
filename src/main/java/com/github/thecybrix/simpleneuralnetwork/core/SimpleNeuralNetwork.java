@@ -221,10 +221,17 @@ public class SimpleNeuralNetwork {
 		if(!(obj instanceof SimpleNeuralNetwork)) return false;
 		SimpleNeuralNetwork other = (SimpleNeuralNetwork)obj;
 
-		return (NeuralNetworkTools.haveSameLayout(this, other) &&
-		   		NeuralNetworkTools.haveSameWeights(this, other) &&
-		   		NeuralNetworkTools.haveSameBiases(this, other));
+		return (
+			NeuralNetworkTools.haveSameLayout(this, other) &&
+			NeuralNetworkTools.haveSameWeights(this, other) &&
+			NeuralNetworkTools.haveSameBiases(this, other)
+		);
 	}
+	
+	@Override
+    public int hashCode() {
+        return Objects.hash(Arrays.deepHashCode(weights), Arrays.deepHashCode(biases));
+    }
 	
 
 

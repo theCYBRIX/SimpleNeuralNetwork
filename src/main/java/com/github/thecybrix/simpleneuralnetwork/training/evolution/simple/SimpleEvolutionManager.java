@@ -9,7 +9,7 @@ import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchExc
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.OffspringGenerator;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
-import com.github.thecybrix.simpleneuralnetwork.util.CompoundRatio;
+import com.github.thecybrix.simpleneuralnetwork.util.MultiPartRatio;
 import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends NetworkEvolutionManager<E> {
@@ -22,10 +22,10 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
 	final private static byte AGGRESSIVE_MUTATION_RATIO_TERM = 30;
 	final private static byte CROSSOVER_RATIO_TERM = 7;
 
-	final private static float HIGH_BIAS_ADJUST_RATE = 2f,
+	final private static float HIGH_BIAS_ADJUST_RATE = 1f,
                                MEDIUM_BIAS_ADJUST_RATE = 0.08f,
                                LOW_BIAS_ADJUST_RATE = 0.02f,
-                               HIGH_WEIGHT_ADJUST_RATE = 1f,
+                               HIGH_WEIGHT_ADJUST_RATE = 0.5f,
                                MEDIUM_WEIGHT_ADJUST_RATE = 0.01f,
                                LOW_WEIGHT_ADJUST_RATE = 0.002f;
     
@@ -50,7 +50,7 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
     }
 
     private static <E extends MutableNeuralNetwork> OffspringGenerator<E> getCrossoverProvider(Supplier<E> networkSupplier){
-        return new Crossover<E>(networkSupplier);
+        return new CrossoverPerWeight<E>(networkSupplier);
     }
         
     private static <E extends MutableNeuralNetwork> OffspringGenerator<E> getEliteProvider(){
@@ -61,7 +61,7 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
         return Arrays.asList(getEliteProvider(), getAggressiveMutationProvider(networkSupplier), getModerateMutationProvider(networkSupplier), getSubtleMutationProvider(networkSupplier), getCrossoverProvider(networkSupplier));
     }
 
-    private static CompoundRatio getDistribution(){
-        return CompoundRatio.of(ELITE_RATIO_TERM, MODERATE_MUTATION_TERM, AGGRESSIVE_MUTATION_RATIO_TERM, SUBTLE_MUTATION_RATIO_TERM, CROSSOVER_RATIO_TERM);
+    private static MultiPartRatio getDistribution(){
+        return MultiPartRatio.of(ELITE_RATIO_TERM, MODERATE_MUTATION_TERM, AGGRESSIVE_MUTATION_RATIO_TERM, SUBTLE_MUTATION_RATIO_TERM, CROSSOVER_RATIO_TERM);
     }
 }

@@ -1,7 +1,5 @@
 package com.github.thecybrix.simpleneuralnetwork.training.evolution.simple;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -39,14 +37,12 @@ public abstract class SimpleOffspringGenerator<E extends MutableNeuralNetwork> i
     protected abstract ScoredNetwork<E> applyAtIndex(List<ScoredNetwork<E>> parents, int index);
 
     @Override
-    final public List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, int numOffspring) {
-        if(parents.isEmpty() || numOffspring <= 0) return Collections.emptyList();
-        ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
+    final public void createOffspring(List<ScoredNetwork<E>> parents, int numOffspring, List<ScoredNetwork<E>> destination) {
+        Objects.requireNonNull(destination, "Destination list is null.");
+        if(parents.isEmpty() || numOffspring <= 0) return;
 
         for(int i = 0; i < numOffspring; i++)
-            offspring.add(applyAtIndex(parents, parents.size() - (1 + i%parents.size())));
-
-        return offspring;
+            destination.add(applyAtIndex(parents, parents.size() - (1 + i%parents.size())));
     }
 
     @Override

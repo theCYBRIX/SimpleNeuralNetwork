@@ -4,52 +4,45 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.simpleneuralnetwork.util.CompoundRatio;
+import com.github.thecybrix.simpleneuralnetwork.util.MultiPartRatio;
+import com.github.thecybrix.simpleneuralnetwork.util.ObjIntPair;
 import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 
-    private static ExecutorService executorService;
-    private static int executorServiceUsers = 0;
-
-    final private CompoundRatio NETWORK_DISTRIBUTION;
+    final private MultiPartRatio networkDistribution;
+    final private ArrayList<OffspringGenerator<E>> offspringGenerators;
 
     private boolean parallel = false, createMetadata = false;
 
-    private BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>> newGenerationFunction = this::linearNewGeneration;
+    private int[] networksPerProvider = new int[0];
+    private int expectedOffspring = 0;
+
+    private NewGenerationFunction<E> newGenerationFunction = this::linearNewGeneration;
     private ParentSelector<E> parentSelector;
 
-    private ArrayList<OffspringGenerator<E>> offspringGenerators;
     private float parentFraction;
     private Supplier<E> networkSupplier;
 
 
-    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders) throws DimensionsMismatchException, IllegalArgumentException, ArithmeticException, NullPointerException{
-        this(parentFraction, parentSelector, networkSupplier, offspringProviders, CompoundRatio.uniform(offspringProviders.size()));
+    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException{
+        this(parentFraction, parentSelector, networkSupplier, offspringProviders, MultiPartRatio.uniform(offspringProviders.size()));
     }
 
-    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders, CompoundRatio distribution) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException{
+    public NetworkEvolutionManager(Fraction parentFraction, ParentSelector<E> parentSelector, Supplier<E> networkSupplier, Collection<OffspringGenerator<E>> offspringProviders, MultiPartRatio distribution) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException{
         if(offspringProviders.size() <= 0) throw new IllegalArgumentException("Illegal number of offspring providers. Collection.size() <= 0");
 
         this.networkSupplier = Objects.requireNonNull(networkSupplier, "Network supplier is null.");
 
         this.parentSelector = Objects.requireNonNull(parentSelector, "Parent selector is null.");
         
-        NETWORK_DISTRIBUTION = Objects.requireNonNull(distribution, "Distribution is null.");
+        networkDistribution = Objects.requireNonNull(distribution, "Distribution is null.");
 
         if(offspringProviders.size() != distribution.getNumTerms())
             throw new DimensionsMismatchException("Number of offspring providers does not match number of terms in the distribution.");
@@ -61,38 +54,9 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         this.offspringGenerators = new ArrayList<>(offspringProviders);
     }
 
-
-    private synchronized static void registerExecutorServiceUsage(){
-        executorServiceUsers += 1;
-        if(executorService == null) executorService = Executors.newWorkStealingPool();
-    }
-
-    private synchronized static void unregisterExecutorServiceUsage(){
-        executorServiceUsers -= 1;
-        if(executorServiceUsers != 0) return;
-
-        try {
-            executorService.shutdown();
-            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            executorService.shutdownNow();
-            Thread.currentThread().interrupt();
-        } finally {
-            executorService = null;
-        }
-    }
-
-
     public void setParallel(boolean enabled){
         if(enabled == parallel) return;
         parallel = enabled;
-
-        if(parallel)
-            registerExecutorServiceUsage();
-        else
-            unregisterExecutorServiceUsage();
         
         updateNewGenerationFunction();
     }
@@ -109,7 +73,7 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         }
     }
 
-    private BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>> getNewGenerationFunction(boolean parallel, boolean withMetadata){
+    private NewGenerationFunction<E> getNewGenerationFunction(boolean parallel, boolean withMetadata){
         if(parallel){
             return withMetadata ? new ParallelNewGenerationWithMetadata() : new ParallelNewGeneration();
         } else {
@@ -157,16 +121,25 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         int numParents = Math.max(1, Math.round(networks.size() * parentFraction));
         List<ScoredNetwork<E>> parentNetworks = parentSelector.getParents(numParents, networks);
 
+        updateNetworksPerProvider(numOffspring);
+
         synchronized(newGenerationFunction){
             return newGenerationFunction.apply(parentNetworks, numOffspring);
         }
     }
 
-    private Integer[] getNumNetworksPerProvider(int totalNumNetworks){
-        Integer[] nerworksPerProvider = new Integer[NETWORK_DISTRIBUTION.getNumTerms()];
+    private int[] getNumNetworksPerProvider(int totalNumNetworks){
+        int[] nerworksPerProvider = new int[networkDistribution.getNumTerms()];
         for(int i = 0; i < nerworksPerProvider.length; i++)
-            nerworksPerProvider[i] = Integer.valueOf(Math.round(totalNumNetworks * NETWORK_DISTRIBUTION.getFraction(i).floatValue()));
+            nerworksPerProvider[i] = Math.round(totalNumNetworks * networkDistribution.getFraction(i).floatValue());
         return nerworksPerProvider;
+    }
+
+    private void updateNetworksPerProvider(int numOffspring){
+        if(numOffspring == expectedOffspring)
+            return;
+        expectedOffspring = numOffspring;
+        networksPerProvider = getNumNetworksPerProvider(expectedOffspring);
     }
 
     private List<ScoredNetwork<E>> createOffspringWithMetadata(List<ScoredNetwork<E>> parentNetworks, OffspringGenerator<E> generator, Integer numOffspring){
@@ -178,9 +151,9 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         return offspring;
     }
 
-    private List<ScoredNetwork<E>> linearNewGenerationWithMetadata(List<ScoredNetwork<E>> parentNetworks, Integer numOffspring){
+    private List<ScoredNetwork<E>> linearNewGenerationWithMetadata(List<ScoredNetwork<E>> parentNetworks, int numOffspring){
         ArrayList<ScoredNetwork<E>> newGeneration = new ArrayList<>(numOffspring);
-        Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
+        int[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
 
         for(int i = 0; i < networksPerProvider.length; i++){
             OffspringGenerator<E> generator = offspringGenerators.get(i);
@@ -192,38 +165,31 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         return newGeneration;
     }
 
-    private List<ScoredNetwork<E>> linearNewGeneration(List<ScoredNetwork<E>> parentNetworks, Integer numOffspring) {
+    private List<ScoredNetwork<E>> linearNewGeneration(List<ScoredNetwork<E>> parentNetworks, int numOffspring) {
         ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
-        Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
 
         for(int i = 0; i < networksPerProvider.length; i++)
-            offspring.addAll(offspringGenerators.get(i).createOffspring(parentNetworks, networksPerProvider[i]));
+            offspringGenerators.get(i).createOffspring(parentNetworks, networksPerProvider[i], offspring);
 
         return offspring;
     }
 
-    private class ParallelNewGeneration implements BiFunction<List<ScoredNetwork<E>>, Integer, List<ScoredNetwork<E>>>{
+    private class ParallelNewGeneration implements NewGenerationFunction<E>{
 
         @Override
-        public List<ScoredNetwork<E>> apply(List<ScoredNetwork<E>> parents, Integer numOffspring) {
+        public synchronized List<ScoredNetwork<E>> apply(List<ScoredNetwork<E>> parents, int numOffspring) {
             ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
-            ArrayList<Future<List<ScoredNetwork<E>>>> processes = new ArrayList<>(offspringGenerators.size());
-            Integer[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
-
-            for(int i = 0; i < offspringGenerators.size(); i++){
-                final int index = i;
-                Callable<List<ScoredNetwork<E>>> task = () -> createOffspring(parents, offspringGenerators.get(index), networksPerProvider[index]);
-                processes.add(executorService.submit(task));
+            ArrayList<ObjIntPair<OffspringGenerator<E>>> offspringCounts = new ArrayList<>(networksPerProvider.length);
+            for (int i = 0; i < networksPerProvider.length; i++) {
+                offspringCounts.add(new ObjIntPair<>(offspringGenerators.get(i), networksPerProvider[i]));
             }
 
-            for(Future<List<ScoredNetwork<E>>> future : processes)
-                try {
-                    offspring.addAll(future.get());
-                } catch(InterruptedException | CancellationException e) {
-                    break;
-                } catch (ExecutionException e) {
-                    e.printStackTrace();
+            offspringCounts.parallelStream().forEach(x -> {
+                List<ScoredNetwork<E>> children = createOffspring(parents, x.getObject(), x.getInteger());
+                synchronized(offspring){
+                    offspring.addAll(children);
                 }
+            });
 
             return offspring;
         }
@@ -239,5 +205,10 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         protected List<ScoredNetwork<E>> createOffspring(List<ScoredNetwork<E>> parents, OffspringGenerator<E> generator, int numOffspring) {
             return createOffspringWithMetadata(parents, generator, numOffspring);
         }
+    }
+
+    @FunctionalInterface
+    private interface NewGenerationFunction<E extends MutableNeuralNetwork> {
+        public List<ScoredNetwork<E>> apply(List<ScoredNetwork<E>> parents, int numOffspring);
     }
 }

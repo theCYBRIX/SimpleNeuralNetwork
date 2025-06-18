@@ -52,12 +52,13 @@ public class Fraction extends Number implements Comparable<Fraction> {
     
     final private int NUMERATOR, DENOMINATOR;
 
-    private Fraction(int numerator, int denominator) {
+    private Fraction(int numerator, int denominator) throws IllegalArgumentException {
+        if(denominator == 0) throw new IllegalArgumentException("The denominator of a fraction cannot be zero.");
         NUMERATOR = numerator;
         DENOMINATOR = denominator;
     }
 
-    public static Fraction of(int numerator, int denominator){
+    public static Fraction of(int numerator, int denominator) throws IllegalArgumentException {
         return new Fraction(numerator, denominator);
     }
 
@@ -73,12 +74,12 @@ public class Fraction extends Number implements Comparable<Fraction> {
 
     @Override
     public int intValue() {
-        return (int) floatValue();
+        return (NUMERATOR / DENOMINATOR);
     }
 
     @Override
     public long longValue() {
-        return (long) doubleValue();
+        return (NUMERATOR / DENOMINATOR);
     }
 
     public int getNumerator() {

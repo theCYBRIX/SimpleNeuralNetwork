@@ -1,5 +1,6 @@
 
-import java.io.Console;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -11,7 +12,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Scanner;
@@ -19,6 +19,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
+import javax.swing.JFrame;
 
 import org.knowm.xchart.SwingWrapper;
 import org.knowm.xchart.XYChart;
@@ -56,7 +58,6 @@ final public class LearnSineFunction extends TestingTools {
                                                                       .addHiddenLayers(2, 4, ActivationFunctions.TANH);
 
     //Class
-    final private Console CONSOLE;
     private XYChart chart;
     private SwingWrapper<XYChart> chartWrapper;
 
@@ -83,7 +84,7 @@ final public class LearnSineFunction extends TestingTools {
     final double[] error;
 
     public static void main(String[] args) {
-        LearnSineFunction learnSineFunction = new LearnSineFunction(System.console());
+        LearnSineFunction learnSineFunction = new LearnSineFunction();
         learnSineFunction.run();
     }
 
@@ -91,7 +92,7 @@ final public class LearnSineFunction extends TestingTools {
         mainThread = Thread.currentThread();
         println("Network Layout:\n" + layout.getLayout());
 
-        try{ printNetworkPredictions(savePath, saveType, x, y); } catch (Exception e){ e.printStackTrace(); }
+        try{ printNetworkPredictions(savePath, saveType, x, y); } catch(FileNotFoundException e) {} catch (Exception e){ e.printStackTrace(); }
 
         chart = new XYChartBuilder()
                     .title("Learn Sine Function")
@@ -134,7 +135,23 @@ final public class LearnSineFunction extends TestingTools {
         chart.addSeries("Sine", x, y, null);
         chart.addSeries("Prediction", x, new double[x.length], null);
         chartWrapper = new SwingWrapper<>(chart);
-        chartWrapper.displayChart();
+
+        JFrame frame = chartWrapper.displayChart();
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.addWindowListener(new WindowListener(){
+            @Override
+            public void windowClosed(WindowEvent e) {
+                synchronized(SYNCH_OBJECT){
+                    SYNCH_OBJECT.notifyAll();
+                }
+            }
+            @Override public void windowOpened(WindowEvent e) {}
+            @Override public void windowClosing(WindowEvent e) {}
+            @Override public void windowIconified(WindowEvent e) {}
+            @Override public void windowDeiconified(WindowEvent e) {}
+            @Override public void windowActivated(WindowEvent e) {}
+            @Override public void windowDeactivated(WindowEvent e) {}
+        });
 
         trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, ParentSelector.eliteSelection(Comparator.reverseOrder()), ValueMappingTrainer.of(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()), (a, b) -> 0 - a.compareTo(b));
         trainer.attachCallback(x -> updateScoreHistory());
@@ -158,7 +175,7 @@ final public class LearnSineFunction extends TestingTools {
 
         ScheduledFuture<?> graphUpdates = EXECUTOR_SERVICE.scheduleAtFixedRate(new GraphUpdater(), 50, 100, TimeUnit.MILLISECONDS);
         ScheduledFuture<?> statusUpdates = EXECUTOR_SERVICE.scheduleAtFixedRate(new StatusUpdater(), 50, 500, TimeUnit.MILLISECONDS);
-        EXECUTOR_SERVICE.scheduleAtFixedRate(new InputWatcher(), 20, 100, TimeUnit.MILLISECONDS);
+        EXECUTOR_SERVICE.scheduleWithFixedDelay(new InputWatcher(), 20, 100, TimeUnit.MILLISECONDS);
 
         try {
             synchronized(SYNCH_OBJECT){
@@ -167,10 +184,10 @@ final public class LearnSineFunction extends TestingTools {
         } catch (Exception exception) {
             if(!(exception instanceof InterruptedException)) exception.printStackTrace();
             println("Closing application... (Runtime: " + formatTime(Duration.between(startTime, Instant.now())) + " )");
-            trainer.stop();
             return;
 
         } finally {
+            trainer.stop();
             graphUpdates.cancel(false);
             statusUpdates.cancel(false);
         }
@@ -193,19 +210,18 @@ final public class LearnSineFunction extends TestingTools {
         for(int i = 0; i < inputs.length; i++){
             bestNetwork.setInput(0, inputs[i][0]);
             bestNetwork.forwardPass();
-            results.append(", ")
+            results.append("\n")
                    .append(DECIMAL_FORMAT.format(inputs[i][0]))
-                   .append(", ")
+                   .append(" -> ")
                    .append(DECIMAL_FORMAT.format(outputs[i][0]))
-                   .append(", ")
+                   .append(" = ~")
                    .append(DECIMAL_FORMAT.format(bestNetwork.getOutput(0)));
         }
 
         println(results.toString());
     }
 
-    private LearnSineFunction(Console console){
-        CONSOLE = Objects.requireNonNull(console, "Console is null.");
+    private LearnSineFunction(){
 
         double range = limits[1] - limits[0];
         x = new double[numSamples]; 
@@ -299,7 +315,7 @@ final public class LearnSineFunction extends TestingTools {
     }
 
     private class InputWatcher implements Runnable{
-        final private Scanner INPUT_SCANNER = new Scanner(CONSOLE.reader());
+        final private Scanner INPUT_SCANNER = new Scanner(System.in);
 
         public void run(){
             if(!INPUT_SCANNER.hasNextLine()) return;
@@ -330,7 +346,7 @@ final public class LearnSineFunction extends TestingTools {
                             else
                                 throw new Exception("Too many arguments.\nExpected 2, but received " + args.length + ".");
                         } catch(Exception e) {
-                            println("Err: " + e.getMessage());
+                            println("Error: " + e.getMessage());
                             break;
                         }
                     try {
@@ -356,10 +372,13 @@ final public class LearnSineFunction extends TestingTools {
                 case "view", "print":
                     println(getBestNetwork().get().copy().toJson());
                     return;
-
-            
-                default:
+                
+                case "status":
                     println(getStatus());
+                    break;
+
+                default:
+                    println("Valid Commands: \n\tstart\n\tsave\n\texit/close/quit\n\tstop/halt\n\tview/print\n\tstatus");
                     break;
             }
         }

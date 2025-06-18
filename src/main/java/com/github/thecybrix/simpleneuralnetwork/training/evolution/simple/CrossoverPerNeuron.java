@@ -8,10 +8,10 @@ import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleOffspringGenerator.TwoParentOffspringProvider;
 
-public class Crossover<E extends MutableNeuralNetwork> extends TwoParentOffspringProvider<E>{
+public class CrossoverPerNeuron<E extends MutableNeuralNetwork> extends TwoParentOffspringProvider<E>{
 
-    public Crossover(Supplier<E> networkSupplier) throws NullPointerException {
-        super((x, y) -> new ScoredNetwork<>(NeuralNetworkTools.crossover(x, y, networkSupplier.get())), "crossover");
+    public CrossoverPerNeuron(Supplier<E> networkSupplier) throws NullPointerException {
+        super((x, y) -> new ScoredNetwork<>(NeuralNetworkTools.crossoverPerNeuron(x, y, networkSupplier.get())), "crossover (per neuron)");
         Objects.requireNonNull(networkSupplier, "Network supplier is null.");
     }
     

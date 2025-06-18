@@ -3,12 +3,12 @@ package com.github.thecybrix.simpleneuralnetwork.util;
 import java.util.NoSuchElementException;
 
 public class Pair<E, T> {
-    final private E FIRST;
-    final private T SECOND;
+    final private E first;
+    final private T second;
 
     public Pair(E first, T second) {
-        FIRST = first;
-        SECOND = second;
+        this.first = first;
+        this.second = second;
     }
 
     public static <E, T> Pair<E, T> of(E first, T second){
@@ -16,36 +16,40 @@ public class Pair<E, T> {
     }
 
     public E getFirst() {
-        return FIRST;
+        return first;
     }
 
     public T getSecond() {
-        return SECOND;
+        return second;
     }
 
     public E getFirstOrElse(E other) {
-        return (FIRST != null) ? FIRST : other;
+        return (first != null) ? first : other;
     }
 
     public T getSecondOrElse(T other) {
-        return (SECOND != null) ? SECOND : other;
+        return (second != null) ? second : other;
     }
 
     public E getFirstOrThrow() throws NoSuchElementException {
-        if(FIRST == null) throw new NoSuchElementException("First object is null.");
-        return FIRST;
+        if(first == null) throw new NoSuchElementException("First object is null.");
+        return first;
     }
 
     public T getSecondOrThrow() throws NoSuchElementException {
-        if(SECOND == null) throw new NoSuchElementException("Second object is null.");
-        return SECOND;
+        if(second == null) throw new NoSuchElementException("Second object is null.");
+        return second;
     }
 
     public boolean hasFirst(){
-        return FIRST != null;
+        return first != null;
     }
 
     public boolean hasSecond(){
-        return SECOND != null;
+        return second != null;
+    }
+
+    public Pair<E, T> copy(){
+        return new Pair<>(first, second);
     }
 }

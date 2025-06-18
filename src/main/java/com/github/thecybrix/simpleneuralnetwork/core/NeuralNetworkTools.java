@@ -37,7 +37,7 @@ final public class NeuralNetworkTools {
 	 * @return A number "N" such that {@code (origin - maxDeviation) <= N <= (origin + maxDeviation) }.
 	 */
 	private static double randomOffset(double origin, double maxDeviation) {
-		return randomOffset(origin, maxDeviation, RandomNumberGeneratorHolder.RANDOM);
+		return randomOffset(origin, maxDeviation, RandomHolder.RANDOM);
 	}
 
 	protected static double dotProduct(double[] v1, double[] v2) {
@@ -117,7 +117,7 @@ final public class NeuralNetworkTools {
 
 
 	public static <E extends MutableNeuralNetwork> E shiftWeightsAndBiases(E network, double maxWeightOffset, double maxBiasOffset) throws NullPointerException {
-		return shiftWeightsAndBiases(network, maxWeightOffset, maxBiasOffset, RandomNumberGeneratorHolder.RANDOM);
+		return shiftWeightsAndBiases(network, maxWeightOffset, maxBiasOffset, RandomHolder.RANDOM);
 	}
 
 	public static <E extends MutableNeuralNetwork> E shiftWeightsAndBiases(E network, double maxWeightOffset, double maxBiasOffset, Random random) throws NullPointerException {
@@ -133,7 +133,7 @@ final public class NeuralNetworkTools {
 	}
 
 	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network) throws NullPointerException {
-		return randomizeWeightsAndBiases(network, RandomNumberGeneratorHolder.RANDOM);
+		return randomizeWeightsAndBiases(network, RandomHolder.RANDOM);
 	}
 
 	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, Random random) throws NullPointerException {
@@ -141,7 +141,7 @@ final public class NeuralNetworkTools {
 	}
 
 	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, double weightOrigin, double wOffsetMagnitude, double biasOrigin, double bOffsetMagnitude) throws NullPointerException {
-		return randomizeWeightsAndBiases(network, weightOrigin, wOffsetMagnitude, biasOrigin, bOffsetMagnitude, RandomNumberGeneratorHolder.RANDOM);
+		return randomizeWeightsAndBiases(network, weightOrigin, wOffsetMagnitude, biasOrigin, bOffsetMagnitude, RandomHolder.RANDOM);
 	}
 
 	public static <E extends MutableNeuralNetwork> E randomizeWeightsAndBiases(E network, double weightOrigin, double wOffsetMagnitude, double biasOrigin, double bOffsetMagnitude, Random random) throws NullPointerException {
@@ -194,30 +194,71 @@ final public class NeuralNetworkTools {
 		return network;
 	}
 
-	public static <E extends MutableNeuralNetwork> E crossover(Supplier<E> parent1, Supplier<E> parent2, E child) throws LayoutMismatchException, NullPointerException{
-		return crossover(parent1.get(), parent2.get(), child);
+	public static <E extends MutableNeuralNetwork> E crossoverPerWeight(Supplier<E> parent1, Supplier<E> parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerWeight(parent1.get(), parent2.get(), child);
 	}
 
-	public static <E extends MutableNeuralNetwork> E crossover(E parent1, E parent2, E child) throws LayoutMismatchException, NullPointerException{
-		return crossover(parent1, parent2, child, 0.5f);
+	public static <E extends MutableNeuralNetwork> E crossoverPerWeight(Supplier<E> parent1, Supplier<E> parent2, E child, float parent1Bias) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerWeight(parent1.get(), parent2.get(), child, parent1Bias);
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerWeight(E parent1, E parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerWeight(parent1, parent2, child, 0.5f);
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerWeight(E parent1, E parent2, E child, float parent1Bias) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerWeight(parent1, parent2, child, parent1Bias, RandomHolder.RANDOM);
 	}
 	
 
-	public static <E extends MutableNeuralNetwork> E crossover(E parent1, E parent2, E child, float lerpFactor) throws LayoutMismatchException, NullPointerException{
+	public static <E extends MutableNeuralNetwork> E crossoverPerWeight(E parent1, E parent2, E child, float parent1Bias, Random random) throws LayoutMismatchException, NullPointerException{
 		NeuralNetworkTools.requireSameDimensions(parent1, parent2, child);
+		Objects.requireNonNull(random, "Random is null.");
 
 		double[][][] weights1 = parent1.weights, weights2 = parent2.weights, childWeights = child.weights;
+		double[][] biases1 = parent1.biases, biases2 = parent2.biases, childBiases = child.biases;
 
-		try {
-			for(int layer = 0; layer < weights1.length; layer++)
-				for(int node = 0; node < weights1[layer].length; node++){
-					double[] w1 = weights1[layer][node], w2 = weights2[layer][node], c = childWeights[layer][node];
-					for(int weight = 0; weight < w1.length; weight++)
-						c[weight] = lerp(w1[weight], w2[weight], lerpFactor);
-				}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		for(int layer = 0; layer < weights1.length; layer++)
+			for(int node = 0; node < weights1[layer].length; node++){
+				childBiases[layer][node] = random.nextDouble() < parent1Bias ? biases1[layer][node] : biases2[layer][node];
+
+				double[] w1 = weights1[layer][node], w2 = weights2[layer][node], c = childWeights[layer][node];
+
+				for(int weight = 0; weight < w1.length; weight++)
+					c[weight] = random.nextDouble() < parent1Bias ? w1[weight] : w2[weight];
+			}
+
+		return child;
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerNeuron(Supplier<E> parent1, Supplier<E> parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerNeuron(parent1.get(), parent2.get(), child);
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerNeuron(Supplier<E> parent1, Supplier<E> parent2, E child, float parent1Bias) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerNeuron(parent1.get(), parent2.get(), child, parent1Bias);
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerNeuron(E parent1, E parent2, E child) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerNeuron(parent1, parent2, child, 0.5f);
+	}
+
+	public static <E extends MutableNeuralNetwork> E crossoverPerNeuron(E parent1, E parent2, E child, float parent1Bias) throws LayoutMismatchException, NullPointerException{
+		return crossoverPerNeuron(parent1, parent2, child, parent1Bias, RandomHolder.RANDOM);
+	}
+	
+	public static <E extends MutableNeuralNetwork> E crossoverPerNeuron(E parent1, E parent2, E child, float parent1Bias, Random random) throws LayoutMismatchException, NullPointerException{
+		NeuralNetworkTools.requireSameDimensions(parent1, parent2, child);
+		Objects.requireNonNull(random, "Random is null.");
+
+		double[][][] weights1 = parent1.weights, weights2 = parent2.weights, childWeights = child.weights;
+		double[][] biases1 = parent1.biases, biases2 = parent2.biases, childBiases = child.biases;
+
+		for(int layer = 0; layer < weights1.length; layer++)
+			for(int node = 0; node < weights1[layer].length; node++){
+				childBiases[layer][node] = random.nextDouble() < parent1Bias ? biases1[layer][node] : biases2[layer][node];
+				deepCopy(random.nextDouble() < parent1Bias ? weights1[layer][node] : weights2[layer][node], childWeights[layer][node]);
+			}
 
 		return child;
 	}
@@ -293,7 +334,7 @@ final public class NeuralNetworkTools {
 	// }
 
 	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation, double mutationRate){
-		return mutate(network, maxWeightDeviation, maxBiasDeviation, mutationRate, RandomNumberGeneratorHolder.RANDOM);
+		return mutate(network, maxWeightDeviation, maxBiasDeviation, mutationRate, RandomHolder.RANDOM);
 	}
 
 	public static <E extends MutableNeuralNetwork> E mutate(E network, double maxWeightDeviation, double maxBiasDeviation){
@@ -317,7 +358,7 @@ final public class NeuralNetworkTools {
 		HashSet<E> children = new HashSet<>(numChildren);
 
 		while(children.size() < numChildren)
-			children.add(NeuralNetworkTools.crossover(parent1, parent2, childSource.get(), (float)Math.random()));
+			children.add(NeuralNetworkTools.crossoverPerWeight(parent1, parent2, childSource.get(), (float)Math.random()));
 
 		return children;
 	}
@@ -615,6 +656,16 @@ final public class NeuralNetworkTools {
 		return min + frac * (max - min);
 	}
 
+	final public static double[] deepCopy(double[] original){
+		double[] copy = new double[original.length];
+		System.arraycopy(original, 0, copy, 0, original.length);
+		return copy;
+	}
+
+	final public static void deepCopy(double[] source, double[] target) throws IndexOutOfBoundsException, NullPointerException {
+		System.arraycopy(source, 0, target, 0, source.length);
+	}
+
 	final public static double[][] deepCopy(double[][] original){
 		double[][] copy = new double[original.length][];
 		for(int i = 0; i < original.length; i++){
@@ -656,7 +707,7 @@ final public class NeuralNetworkTools {
 		return true;
 	}
 
-	private static class RandomNumberGeneratorHolder{
+	private static class RandomHolder{
 		final public static Random RANDOM = new Random();
 	}
 }
