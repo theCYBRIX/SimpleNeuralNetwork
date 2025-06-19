@@ -94,6 +94,56 @@ public class MultiPartRatio implements Iterable<Fraction>{
         return FRACTIONS[index];
     }
 
+    /**
+     * Distributes a given total amount across the terms of this ratio, returning an array of integers
+     * representing the allocated portions for each term.
+     * <p>
+     * The distribution is performed proportionally using the Largest Remainder Method:
+     * <ul>
+     *   <li>The total is first multiplied by each term's fractional share (defined as term value / sum of all terms).</li>
+     *   <li>The integer floor of each result is assigned initially.</li>
+     *   <li>If the sum of initial assignments is less than the total, the remaining amount (at most 1)
+     *       is assigned to the term with the largest remainder.</li>
+     * </ul>
+     * This ensures that the sum of the returned array equals the input {@code total}, and that the
+     * distribution is as close as possible to the intended proportions.
+     *
+     * @param total the total amount to distribute (must be non-negative)
+     * @return an array of integers representing the distributed amounts per term,
+     *         where the length of the array equals the number of terms in this ratio
+     * @throws IllegalArgumentException if {@code total} is negative
+     */
+    public int[] distribute(int total){
+        if(total <= 0){
+            if(total == 0)
+                return new int[getNumTerms()];
+            else
+                throw new IllegalArgumentException("Total cannot be < 0"); 
+        }
+        
+        int[] allocations = new int[getNumTerms()];
+        float[] remainders = new float[allocations.length];
+        int assignedTotal = 0;
+        for(int i = 0; i < allocations.length; i++){
+            float idealCount = total * getFraction(i).floatValue();
+            int assignedCount = (int)idealCount;
+            allocations[i] = assignedCount;
+            assignedTotal += assignedCount;
+            remainders[i] = idealCount - assignedCount;
+        }
+
+        if(assignedTotal != total){
+            int maxIndex = 0;
+            for (int i = 1; i < remainders.length; i++) {
+                if(remainders[i] > remainders[maxIndex])
+                    maxIndex = i;
+            }
+            allocations[maxIndex] += (total - assignedTotal);
+        }
+
+        return allocations;
+    }
+
     public Stream<Fraction> stream(){
         return Arrays.stream(FRACTIONS);
     }

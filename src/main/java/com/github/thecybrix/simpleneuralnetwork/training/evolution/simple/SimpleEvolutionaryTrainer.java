@@ -9,6 +9,8 @@ import com.github.thecybrix.simpleneuralnetwork.training.evolution.EvolutionaryT
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.TrainingScenario;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectionType;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectorFactory;
 
 public class SimpleEvolutionaryTrainer<E extends MutableNeuralNetwork> extends EvolutionaryTrainer<E> {
 
@@ -29,7 +31,7 @@ public class SimpleEvolutionaryTrainer<E extends MutableNeuralNetwork> extends E
     }
 
     private static <E extends MutableNeuralNetwork> NetworkEvolutionManager<E> createEvolutionManager(Supplier<E> networkSupplier){
-        return createEvolutionManager(networkSupplier, ParentSelector.eliteSelection());
+        return createEvolutionManager(networkSupplier, ParentSelectorFactory.createDefaultSelector(ParentSelectionType.ELITES_PREFER_LARGE));
     }
 
     private static <E extends MutableNeuralNetwork> NetworkEvolutionManager<E> createEvolutionManager(Supplier<E> networkSupplier, ParentSelector<E> parentSelector){

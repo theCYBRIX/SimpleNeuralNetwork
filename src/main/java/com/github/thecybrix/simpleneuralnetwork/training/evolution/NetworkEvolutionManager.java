@@ -2,6 +2,7 @@ package com.github.thecybrix.simpleneuralnetwork.training.evolution;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -17,12 +18,12 @@ import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 
     final private MultiPartRatio networkDistribution;
-    final private ArrayList<OffspringGenerator<E>> offspringGenerators;
+    final private List<OffspringGenerator<E>> offspringGenerators;
 
     private boolean parallel = false, createMetadata = false;
 
-    private int[] networksPerProvider = new int[0];
-    private int expectedOffspring = 0;
+    private int[] networksPerProvider;
+    private int expectedOffspring;
 
     private NewGenerationFunction<E> newGenerationFunction = this::linearNewGeneration;
     private ParentSelector<E> parentSelector;
@@ -51,7 +52,10 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 
         if(offspringProviders.stream().anyMatch(x -> x == null)) throw new NullPointerException("Offspring providers contains null.");
 
-        this.offspringGenerators = new ArrayList<>(offspringProviders);
+        this.offspringGenerators = Collections.unmodifiableList(new ArrayList<>(offspringProviders));
+
+        expectedOffspring = 0;
+        networksPerProvider = new int[offspringGenerators.size()];
     }
 
     public void setParallel(boolean enabled){
@@ -98,8 +102,20 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         this.parentFraction = fraction;
     }
 
+    public float getParentFraction() {
+        return parentFraction;
+    }
+
     public void setParentSelector(ParentSelector<E> selector) {
         this.parentSelector = selector;
+    }
+
+    public ParentSelector<E> getParentSelector() {
+        return parentSelector;
+    }
+
+    public List<OffspringGenerator<E>> getOffspringGenerators() {
+        return offspringGenerators;
     }
 
 
@@ -128,18 +144,11 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         }
     }
 
-    private int[] getNumNetworksPerProvider(int totalNumNetworks){
-        int[] nerworksPerProvider = new int[networkDistribution.getNumTerms()];
-        for(int i = 0; i < nerworksPerProvider.length; i++)
-            nerworksPerProvider[i] = Math.round(totalNumNetworks * networkDistribution.getFraction(i).floatValue());
-        return nerworksPerProvider;
-    }
-
     private void updateNetworksPerProvider(int numOffspring){
         if(numOffspring == expectedOffspring)
             return;
         expectedOffspring = numOffspring;
-        networksPerProvider = getNumNetworksPerProvider(expectedOffspring);
+        networksPerProvider = networkDistribution.distribute(expectedOffspring);
     }
 
     private List<ScoredNetwork<E>> createOffspringWithMetadata(List<ScoredNetwork<E>> parentNetworks, OffspringGenerator<E> generator, Integer numOffspring){
@@ -153,7 +162,6 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
 
     private List<ScoredNetwork<E>> linearNewGenerationWithMetadata(List<ScoredNetwork<E>> parentNetworks, int numOffspring){
         ArrayList<ScoredNetwork<E>> newGeneration = new ArrayList<>(numOffspring);
-        int[] networksPerProvider = getNumNetworksPerProvider(numOffspring);
 
         for(int i = 0; i < networksPerProvider.length; i++){
             OffspringGenerator<E> generator = offspringGenerators.get(i);

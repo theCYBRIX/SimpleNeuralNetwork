@@ -9,6 +9,8 @@ import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchExc
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.OffspringGenerator;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectionType;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectorFactory;
 import com.github.thecybrix.simpleneuralnetwork.util.MultiPartRatio;
 import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
@@ -30,7 +32,7 @@ public class SimpleEvolutionManager<E extends MutableNeuralNetwork> extends Netw
                                LOW_WEIGHT_ADJUST_RATE = 0.002f;
     
     public SimpleEvolutionManager(Supplier<E> networkSupplier) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException {
-        this(networkSupplier, ParentSelector.eliteSelection());
+        this(networkSupplier, ParentSelectorFactory.createDefaultSelector(ParentSelectionType.ELITES_PREFER_LARGE));
     }
     
     public SimpleEvolutionManager(Supplier<E> networkSupplier, ParentSelector<E> parentSelector) throws DimensionsMismatchException, IllegalArgumentException, NullPointerException {

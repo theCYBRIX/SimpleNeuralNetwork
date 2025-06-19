@@ -3,7 +3,6 @@ package com.github.thecybrix.simpleneuralnetwork.api.evolution;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -25,44 +24,11 @@ import com.github.thecybrix.simpleneuralnetwork.server.RequestHandlerUtils;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.NetworkEvolutionManager;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectionType;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectorFactory;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleEvolutionManager;
-import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class EvolutionContext<E extends MutableNeuralNetwork> implements APIContext {
-
-    public static enum ParentSelection {
-        ROULETTE_WHEEL_PREFER_LARGE,
-        ROULETTE_WHEEL_PREFER_SMALL,
-        TOURNAMENT_PREFER_LARGE,
-        TOURNAMENT_PREFER_SMALL,
-        ELITES_PREFER_LARGE,
-        ELITES_PREFER_SMALL;
-    }
-
-    public static <E extends MutableNeuralNetwork> ParentSelector<E> getParentSelector(ParentSelection selector) throws NullPointerException {
-        switch (Objects.requireNonNull(selector)) {
-            case ELITES_PREFER_LARGE:
-                return ParentSelector.eliteSelection();
-                
-            case ELITES_PREFER_SMALL:
-                return ParentSelector.eliteSelection(Comparator.reverseOrder());
-            
-            case ROULETTE_WHEEL_PREFER_LARGE:
-                return ParentSelector.rouletteWheelSelection();
-            
-            case ROULETTE_WHEEL_PREFER_SMALL:
-                return ParentSelector.rouletteWheelSelection(true);
-            
-            case TOURNAMENT_PREFER_LARGE:
-                return ParentSelector.tournamentSelection(Fraction.of(10, 100));
-            
-            case TOURNAMENT_PREFER_SMALL:
-                return ParentSelector.tournamentSelection(Fraction.of(10, 100), Comparator.reverseOrder());
-
-            default:
-                throw new NullPointerException();
-        }
-    }
 
     final private NeuralNetworkBuilder<E> NETWORK_BUILDER;
 
@@ -82,11 +48,11 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
     public EvolutionContext(NetworkIDManager<? super E> networkManager, NeuralNetworkBuilder<E> networkBuilder, ParentSelector<E> parentSelector){
         NETWORK_MANAGER = Objects.requireNonNull(networkManager, "Network id manager is null.");
         NETWORK_BUILDER = Objects.requireNonNull(networkBuilder, "Network builder is null.");
-        this.parentSelector = (parentSelector != null) ? parentSelector : ParentSelector.eliteSelection();
+        this.parentSelector = (parentSelector != null) ? parentSelector : ParentSelectorFactory.createDefaultSelector(ParentSelectionType.ELITES_PREFER_LARGE);
     }
     
 
-    public void setup(int numNetworks, NetworkLayout layout, ParentSelection parentSelection, List<MutableNeuralNetwork> initialNetworks, boolean createMetadata) throws NoSuchElementException, IllegalArgumentException, DimensionsMismatchException, NullPointerException {
+    public void setup(int numNetworks, NetworkLayout layout, String parentSelection, List<MutableNeuralNetwork> initialNetworks, boolean createMetadata) throws NoSuchElementException, IllegalArgumentException, DimensionsMismatchException, NullPointerException {
         clearPrevGen();
         clearCurrentGen();
 
@@ -95,7 +61,11 @@ public class EvolutionContext<E extends MutableNeuralNetwork> implements APICont
         else if(layout == null)
             throw new IllegalArgumentException("Either layout or initialNetworks must be specified.");
 
-        parentSelector = getParentSelector(parentSelection);
+        try {
+            parentSelector = ParentSelectorFactory.createDefaultSelector(parentSelection);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid Parent selector. Valid types are:\n\t" + String.join("\n\t", ParentSelectorFactory.getDefaultSelectorNames()), e);
+        }
         
         NETWORK_BUILDER.reset().withLayout(layout);
 

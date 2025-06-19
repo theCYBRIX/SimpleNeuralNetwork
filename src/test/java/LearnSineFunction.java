@@ -10,7 +10,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -34,8 +33,9 @@ import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetworkBuilder
 import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkBuilder;
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
-import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ValueMappingTrainer;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectionType;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectorFactory;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.simple.SimpleEvolutionaryTrainer;
 import com.google.gson.JsonParseException;
 
@@ -153,7 +153,7 @@ final public class LearnSineFunction extends TestingTools {
             @Override public void windowDeactivated(WindowEvent e) {}
         });
 
-        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, ParentSelector.eliteSelection(Comparator.reverseOrder()), ValueMappingTrainer.of(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()), (a, b) -> 0 - a.compareTo(b));
+        trainer = new SimpleEvolutionaryTrainer<>(networksPerGeneration, layout::build, ParentSelectorFactory.createDefaultSelector(ParentSelectionType.ELITES_PREFER_SMALL), ValueMappingTrainer.of(inputs, outputs, new ValueMappingTrainer.MeanSquaredError()), (a, b) -> 0 - a.compareTo(b));
         trainer.attachCallback(x -> updateScoreHistory());
         if(fpsLimit > 0) trainer.attachCallback(x -> { try { Thread.sleep(frameTime); } catch (Exception e) {}; });
 

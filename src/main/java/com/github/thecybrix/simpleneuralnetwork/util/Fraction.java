@@ -1,7 +1,7 @@
 package com.github.thecybrix.simpleneuralnetwork.util;
 
 public class Fraction extends Number implements Comparable<Fraction> {
-    
+    final public static String DELIMITER = ":";
     final public static Fraction ONE, ZERO;
 
     static {
@@ -121,7 +121,13 @@ public class Fraction extends Number implements Comparable<Fraction> {
 
     @Override
     public String toString() {
-        return NUMERATOR + "/" + DENOMINATOR;
+        return NUMERATOR + ":" + DENOMINATOR;
+    }
+
+    public static Fraction fromString(String string) throws IllegalArgumentException, NumberFormatException, NullPointerException {
+        String[] termsStr = string.split(DELIMITER);
+        if(termsStr.length != 2) throw new IllegalArgumentException("Fraction string must be in the form of \"numerator" + DELIMITER + "denominator\".");
+        return new Fraction(Integer.parseInt(termsStr[0]), Integer.parseInt(termsStr[1]));
     }
     
 }

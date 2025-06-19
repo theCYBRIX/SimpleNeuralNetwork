@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.github.thecybrix.simpleneuralnetwork.api.evolution.EvolutionContext.ParentSelection;
 import com.github.thecybrix.simpleneuralnetwork.core.MutableNeuralNetwork;
 import com.github.thecybrix.simpleneuralnetwork.core.NetworkLayout;
 import com.github.thecybrix.simpleneuralnetwork.core.SimpleNeuralNetwork;
@@ -56,7 +55,7 @@ public class SetupRequest<E extends MutableNeuralNetwork> extends ContextualJson
     @Override
     public ResponsePacket handle(JsonObject request, EvolutionContext<E> context) throws Exception {
         int numNetworks;
-        ParentSelection parentSelection;
+        String parentSelection;
         NetworkLayout layout = null;
         List<MutableNeuralNetwork> initialNetworks = null;
         boolean createMetadata = true;
@@ -67,7 +66,7 @@ public class SetupRequest<E extends MutableNeuralNetwork> extends ContextualJson
 
         numNetworks = request.get(NUM_NETWORKS).getAsInt();
         
-        parentSelection = ParentSelection.valueOf(request.get(PARENT_SELECTOR).getAsString());
+        parentSelection = request.get(PARENT_SELECTOR).getAsString();
         
         if(request.has(LAYOUT))
             layout = RequestHandlerUtils.GSON.fromJson(request.getAsJsonObject(LAYOUT), NetworkLayout.class);

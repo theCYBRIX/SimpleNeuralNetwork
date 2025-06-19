@@ -16,12 +16,14 @@ import com.github.thecybrix.simpleneuralnetwork.server.ResponsePacket;
 import com.github.thecybrix.simpleneuralnetwork.server.SimpleStdioServer;
 import com.github.thecybrix.simpleneuralnetwork.server.SimpleTCPServer;
 import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelector;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectionType;
+import com.github.thecybrix.simpleneuralnetwork.training.evolution.ParentSelectors.ParentSelectorFactory;
 import com.google.gson.JsonObject;
 
 public class JsonAPIServiceFactory {
     public static <E extends MutableNeuralNetwork> SimpleStdioServer createStdioServer(NeuralNetworkBuilder<E> networkBuilder, ParentSelector<E> parentSelector, Runnable onExit) {
         Objects.requireNonNull(networkBuilder, "Network builder is null.");
-        parentSelector = (parentSelector != null) ? parentSelector : ParentSelector.eliteSelection();
+        parentSelector = (parentSelector != null) ? parentSelector : ParentSelectorFactory.createDefaultSelector(ParentSelectionType.ELITES_PREFER_LARGE);
 
         JsonIOHandler handler = createJsonHandler(networkBuilder, parentSelector);
 
