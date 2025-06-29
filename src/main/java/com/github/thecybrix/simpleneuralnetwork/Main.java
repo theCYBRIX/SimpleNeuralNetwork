@@ -3,6 +3,7 @@ package com.github.thecybrix.simpleneuralnetwork;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.OptionalLong;
 import java.util.concurrent.Callable;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Formatter;
@@ -40,6 +41,12 @@ public class Main implements Callable<Integer> {
     @Option(names = {"-p", "--port"}, description = "Port number on which to expose the TCP server.")
     private int port = DEFAULT_PORT;
 
+    @Option(names = {"--parent-pid"}, description = "PID of the Parent process; This process will exit if the parent terminates.", converter=PidConverter.class)
+    private OptionalLong parentPid = OptionalLong.empty();
+
+
+    private SimpleStdioServer stdioServer;
+    private SimpleTCPServer tcpServer;
 
     public static void main(String[] args) {
         CommandLine cmdLine = new CommandLine(new Main());
@@ -49,6 +56,7 @@ public class Main implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        parentPid.ifPresent(Main::bindToParentProcess);
         try {
             return handleMode(mode);
         } catch (Exception e) {
@@ -76,12 +84,12 @@ public class Main implements Callable<Integer> {
 
 
 
-    private static void runStdioServer() throws Exception {
-        SimpleStdioServer stdioServer = JsonAPIServiceFactory.createStdioServer(new MutableNeuralNetworkBuilder());
+    private void runStdioServer() throws Exception {
+        stdioServer = JsonAPIServiceFactory.createStdioServer(new MutableNeuralNetworkBuilder());
         stdioServer.run();
     }
 
-    private static void runTCPServer(int port) throws Exception {
+    private void runTCPServer(int port) throws Exception {
         Logger logger = Logger.getLogger("");
         for(Handler handler : logger.getHandlers())
             logger.removeHandler(handler);
@@ -97,11 +105,19 @@ public class Main implements Callable<Integer> {
         logger.setLevel(Level.INFO);
         
         MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder();
-        SimpleTCPServer server = JsonAPIServiceFactory.createTCPServer(port, builder);
-        server.start(SimpleTCPServer.class.getSimpleName());
+        tcpServer = JsonAPIServiceFactory.createTCPServer(port, builder);
+        tcpServer.start(SimpleTCPServer.class.getSimpleName());
 
         BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
         boolean keepActive = true;
+
+        String helpMessage = String.join("\n\t",
+            "\nValid Commands:",
+            "close/exit - Closes the application.",
+            "logging [level] - Prints the current logging level or sets it if a level is provided.",
+            "clear/cls - Clear the terminal.",
+            "help/? - Prints the list of valid commands.\n"
+        );
         
         try {
             while(keepActive){
@@ -111,6 +127,7 @@ public class Main implements Callable<Integer> {
                 }
                 String[] input = line.trim().split("\\s+");
                 switch (input[0]) {
+                    case "close":
                     case "exit":
                         keepActive = false;
                         break;
@@ -123,7 +140,7 @@ public class Main implements Callable<Integer> {
 
                         if(input.length == 1){
                             Level loggingLevel = logger.getLevel();
-                            println(loggingLevel == null ? "[logging disabled]" : loggingLevel.getName());
+                            println(loggingLevel == null ? "[undefined]" : loggingLevel.getName());
                             break;
                         }
 
@@ -147,19 +164,25 @@ public class Main implements Callable<Integer> {
                         println("Logging level set to: '" + levelString + "'");
                         break;
                     
+                    case "cls":
                     case "clear":
                         clrscr();
                         break;
+                    
+                    case "?":
+                    case "help":
+                        println(helpMessage);
+                        break;
                 
                     default:
-                        println("Unknown command: \"" + String.join(" ", input) + "\"");
+                        println("Unknown command: \"" + String.join(" ", input) + "\"\nUse help/? to get a list of valid commands.\n");
                         break;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            server.stop();
+            tcpServer.stop();
         }
         
     }
@@ -181,12 +204,33 @@ public class Main implements Callable<Integer> {
         } catch (IOException | InterruptedException ex) {}
     }
 
+    private static void bindToParentProcess(long parentPid){
+        ProcessHandle parent = ProcessHandle.of(parentPid).orElse(null);
+
+        if (parent == null || !parent.isAlive()) {
+            System.exit(1);
+        }
+
+        parent.onExit().thenRun(() -> {
+            System.exit(0);
+        });
+    }
+
     public static class ModeConverter implements ITypeConverter<Mode> {
         public ModeConverter(){}
 
         @Override
         public Mode convert(String value) throws Exception {
             return Mode.valueOf(value.toUpperCase());
+        }
+    }
+
+    public static class PidConverter implements ITypeConverter<OptionalLong> {
+        public PidConverter(){}
+
+        @Override
+        public OptionalLong convert(String value) throws Exception {
+            return OptionalLong.of(Long.parseLong(value));
         }
     }
 }
