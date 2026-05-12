@@ -1,6 +1,12 @@
 package com.github.thecybrix.simpleneuralnetwork.util;
 
 public class EndianConverter {
+    public static final int BITS_PER_BYTE = 8;
+    public static final int BYTES_PER_SHORT = 2;
+    public static final int BYTES_PER_INT = 4;
+    public static final int BYTES_PER_FLOAT = 4;
+    public static final int BYTES_PER_LONG = 8;
+    public static final int BYTES_PER_DOUBLE = 8;
 
     private final boolean bigEndian;
 
@@ -109,53 +115,53 @@ public class EndianConverter {
     }
     
     public static byte[] shortToBytes(short value, boolean bigEndian) {
-        byte[] bytes = new byte[2];
+        byte[] bytes = new byte[BYTES_PER_SHORT];
         shortToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
 
     public static byte[] intToBytes(int value, boolean bigEndian) {
-        byte[] bytes = new byte[4];
+        byte[] bytes = new byte[BYTES_PER_INT];
         intToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
 
     public static byte[] longToBytes(long value, boolean bigEndian) {
-        byte[] bytes = new byte[8];
+        byte[] bytes = new byte[BYTES_PER_LONG];
         longToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
 
     public static byte[] floatToBytes(float value, boolean bigEndian) {
-        byte[] bytes = new byte[4];
+        byte[] bytes = new byte[BYTES_PER_FLOAT];
         floatToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
     
     public static byte[] doubleToBytes(double value, boolean bigEndian) {
-        byte[] bytes = new byte[8];
+        byte[] bytes = new byte[BYTES_PER_DOUBLE];
         doubleToBytes(value, bytes, 0, bigEndian);
         return bytes;
     }
     
     public static void shortToBytes(short value, byte[] dest, int offset, boolean bigEndian) {
-        for (int i = 0; i < 2; i++) {
-            int index = bigEndian ? 1 - i : i;
-            dest[index + offset] = (byte) (value >>> (i * 8));
+        for (int i = 0; i < BYTES_PER_SHORT; i++) {
+            int index = bigEndian ? (BYTES_PER_SHORT - 1) - i : i;
+            dest[index + offset] = (byte) (value >>> (i * BITS_PER_BYTE));
         }
     }
 
     public static void intToBytes(int value, byte[] dest, int offset, boolean bigEndian) {
-        for (int i = 0; i < 4; i++) {
-            int index = bigEndian ? 3 - i : i;
-            dest[index + offset] = (byte) (value >>> (i * 8));
+        for (int i = 0; i < BYTES_PER_INT; i++) {
+            int index = bigEndian ? (BYTES_PER_INT - 1) - i : i;
+            dest[index + offset] = (byte) (value >>> (i * BITS_PER_BYTE));
         }
     }
 
     public static void longToBytes(long value, byte[] dest, int offset, boolean bigEndian) {
-        for (int i = 0; i < 8; i++) {
-            int index = bigEndian ? 7 - i : i;
-            dest[index + offset] = (byte) (value >>> (i * 8));
+        for (int i = 0; i < BYTES_PER_LONG; i++) {
+            int index = bigEndian ? (BYTES_PER_LONG - 1) - i : i;
+            dest[index + offset] = (byte) (value >>> (i * BITS_PER_BYTE));
         }
     }
 
@@ -170,13 +176,13 @@ public class EndianConverter {
     }
     
     public static int bytesToInt(byte[] bytes, int offset, boolean bigEndian) {
-        if (bytes == null || bytes.length < offset + 4) {
+        if (bytes == null || bytes.length < offset + BYTES_PER_INT) {
             throw new IllegalArgumentException("Byte array must contain at least 4 bytes from the given offset.");
         }
         int value = 0;
-        for (int i = 0; i < 4; i++) {
-            int index = offset + (bigEndian ? 3 - i : i);
-            value |= (bytes[index] & 0xFF) << (i * 8);
+        for (int i = 0; i < BYTES_PER_INT; i++) {
+            int index = offset + (bigEndian ? (BYTES_PER_INT - 1) - i : i);
+            value |= (bytes[index] & 0xFF) << (i * BITS_PER_BYTE);
         }
         return value;
     }
@@ -190,9 +196,9 @@ public class EndianConverter {
             throw new IllegalArgumentException("Byte array must contain at least 2 bytes from the given offset.");
         }
         int value = 0;
-        for (int i = 0; i < 2; i++) {
-            int index = offset + (bigEndian ? 1 - i : i);
-            value |= (bytes[index] & 0xFF) << (i * 8);
+        for (int i = 0; i < BYTES_PER_SHORT; i++) {
+            int index = offset + (bigEndian ? (BYTES_PER_SHORT - 1) - i : i);
+            value |= (bytes[index] & 0xFF) << (i * BITS_PER_BYTE);
         }
         return (short) value;
     }
@@ -202,13 +208,13 @@ public class EndianConverter {
     }
 
     public static long bytesToLong(byte[] bytes, int offset, boolean bigEndian) {
-        if (bytes == null || bytes.length < offset + 8) {
-            throw new IllegalArgumentException("Byte array must contain at least 8 bytes from the given offset.");
+        if (bytes == null || bytes.length < offset + BYTES_PER_LONG) {
+            throw new IllegalArgumentException("Byte array must contain at least " + BYTES_PER_LONG + " bytes from the given offset.");
         }
         long value = 0;
-        for (int i = 0; i < 8; i++) {
-            int index = offset + (bigEndian ? 7 - i : i);
-            value |= ((long) bytes[index] & 0xFFL) << (i * 8);
+        for (int i = 0; i < BYTES_PER_LONG; i++) {
+            int index = offset + (bigEndian ? (BYTES_PER_LONG - 1) - i : i);
+            value |= ((long) bytes[index] & 0xFFL) << (i * BITS_PER_BYTE);
         }
         return value;
     }

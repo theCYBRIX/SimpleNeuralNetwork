@@ -12,7 +12,7 @@ import com.github.thecybrix.simpleneuralnetwork.core.NeuralNetworkTools;
 import com.github.thecybrix.simpleneuralnetwork.exceptions.DimensionsMismatchException;
 import com.github.thecybrix.simpleneuralnetwork.training.ScoredNetwork;
 import com.github.thecybrix.simpleneuralnetwork.util.MultiPartRatio;
-import com.github.thecybrix.simpleneuralnetwork.util.ObjIntPair;
+import com.github.thecybrix.simpleneuralnetwork.util.intObjPair;
 import com.github.thecybrix.simpleneuralnetwork.util.Fraction;
 
 public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
@@ -187,9 +187,9 @@ public class NetworkEvolutionManager<E extends MutableNeuralNetwork>{
         @Override
         public synchronized List<ScoredNetwork<E>> apply(List<ScoredNetwork<E>> parents, int numOffspring) {
             ArrayList<ScoredNetwork<E>> offspring = new ArrayList<>(numOffspring);
-            ArrayList<ObjIntPair<OffspringGenerator<E>>> offspringCounts = new ArrayList<>(networksPerProvider.length);
+            ArrayList<intObjPair<OffspringGenerator<E>>> offspringCounts = new ArrayList<>(networksPerProvider.length);
             for (int i = 0; i < networksPerProvider.length; i++) {
-                offspringCounts.add(new ObjIntPair<>(offspringGenerators.get(i), networksPerProvider[i]));
+                offspringCounts.add(new intObjPair<>(offspringGenerators.get(i), networksPerProvider[i]));
             }
 
             offspringCounts.parallelStream().forEach(x -> {

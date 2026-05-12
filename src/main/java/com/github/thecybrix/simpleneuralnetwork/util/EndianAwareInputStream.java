@@ -16,9 +16,19 @@ public class EndianAwareInputStream implements Closeable {
         this.in = Objects.requireNonNull(inputStream, "Stream is null.");
         this.converter = new EndianConverter(endian);
     }
+
+    /**
+     * Returns an estimate of the number of bytes that can be read (or skipped
+     * over) from this input stream without blocking, which may be 0, or 0 when
+     * end of stream is detected.
+     * @throws IOException
+     */
+    public int available() throws IOException {
+        return in.available();
+    }
     
     /**
-     * @deprecated Use {@link #readByte()} instead for clearer naming.
+     * @deprecated Use {@link #readByte()} instead for clarity.
      */
     @Deprecated
     public int read() throws IOException {

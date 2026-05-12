@@ -3,17 +3,17 @@ package com.github.thecybrix.simpleneuralnetwork.util;
 import java.util.NoSuchElementException;
 import java.util.OptionalInt;
 
-public class ObjIntPair<T> {
+public class intObjPair<T> {
     final T obj;
     final OptionalInt integer;
 
-    public ObjIntPair(T object, int integer){
+    public intObjPair(T object, int integer){
         this.obj = object;
         this.integer = OptionalInt.of(integer);
     }
 
-    public static <E> ObjIntPair<E> of(E object, int integer){
-        return new ObjIntPair<>(object, integer);
+    public static <E> intObjPair<E> of(E object, int integer){
+        return new intObjPair<>(object, integer);
     }
 
     public T getObject() {
@@ -50,7 +50,7 @@ public class ObjIntPair<T> {
         return integer.isPresent();
     }
 
-    public ObjIntPair<T> copy(){
-        return new ObjIntPair<>(obj, integer.getAsInt());
+    public intObjPair<T> copy(){
+        return new intObjPair<>(obj, integer.getAsInt());
     }
 }

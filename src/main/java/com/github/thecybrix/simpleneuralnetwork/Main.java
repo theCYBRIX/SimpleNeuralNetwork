@@ -22,7 +22,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.Option;
 
-@Command(name = "simpleneuralnetwork", mixinStandardHelpOptions = true, version = "Neural Framework 1.0", description = "Runs the neural framework in the specified mode.")
+@Command(name = "simpleneuralnetwork", mixinStandardHelpOptions = true, version = "SimpleNeuralNetwork 1.0", description = "Runs the SimpleNerualNetwork in the specified mode.")
 public class Main implements Callable<Integer> {
 
     enum Mode {
@@ -43,6 +43,14 @@ public class Main implements Callable<Integer> {
 
     @Option(names = {"--parent-pid"}, description = "PID of the Parent process; This process will exit if the parent terminates.", converter=PidConverter.class)
     private OptionalLong parentPid = OptionalLong.empty();
+
+    @Option(names = {"--override-loggers"}, negatable = true, description = { "Enable or disable overrides for console logging handlers.", "Enabled by default." }, converter=PidConverter.class)
+    private boolean overrideLoggers = true;
+
+    @Option(names = { "-v", "--verbose" }, description = {
+            "Specify multiple -v options to increase verbosity.",
+            "For example, `-v -v -v` or `-vvv`" })
+    private boolean[] verbosity = new boolean[0];
 
 
     private SimpleStdioServer stdioServer;
@@ -82,27 +90,21 @@ public class Main implements Callable<Integer> {
         }
     }
 
-
-
     private void runStdioServer() throws Exception {
+        Logger logger = Logger.getLogger("");
+        logger.setLevel(interpretVerbosity(verbosity));
+        if(overrideLoggers)
+            overrideConsoleHandlers(logger);
+        
         stdioServer = JsonAPIServiceFactory.createStdioServer(new MutableNeuralNetworkBuilder());
         stdioServer.run();
     }
 
     private void runTCPServer(int port) throws Exception {
         Logger logger = Logger.getLogger("");
-        for(Handler handler : logger.getHandlers())
-            logger.removeHandler(handler);
-
-        ConsoleHandler consoleHandler = new ConsoleHandler();
-        consoleHandler.setFormatter(new Formatter() {
-            @Override
-            public String format(LogRecord record) {
-                return record.getMessage() + "\n";
-            }
-        });
-        logger.addHandler(consoleHandler);
-        logger.setLevel(Level.INFO);
+        logger.setLevel(interpretVerbosity(verbosity));
+        if(overrideLoggers)
+            overrideConsoleHandlers(logger);
         
         MutableNeuralNetworkBuilder builder = new MutableNeuralNetworkBuilder();
         tcpServer = JsonAPIServiceFactory.createTCPServer(port, builder);
@@ -188,7 +190,7 @@ public class Main implements Callable<Integer> {
     }
 
     static void println(String string){
-        System.out.println(string);
+        System.err.println(string);
     }
 
     static void println(Object obj){
@@ -204,6 +206,16 @@ public class Main implements Callable<Integer> {
         } catch (IOException | InterruptedException ex) {}
     }
 
+    public static Level interpretVerbosity(boolean[] verbosity){
+        switch (verbosity.length) {
+            case 1: return Level.CONFIG;
+            case 2: return Level.FINE;
+            case 3: return Level.FINER;
+            case 4: return Level.FINEST;
+            default: return Level.INFO;
+        }
+    }
+
     private static void bindToParentProcess(long parentPid){
         ProcessHandle parent = ProcessHandle.of(parentPid).orElse(null);
 
@@ -214,6 +226,22 @@ public class Main implements Callable<Integer> {
         parent.onExit().thenRun(() -> {
             System.exit(0);
         });
+    }
+
+    private static void overrideConsoleHandlers(Logger logger) {
+        for(Handler handler : logger.getHandlers())
+            if(handler instanceof ConsoleHandler)
+                logger.removeHandler(handler);
+
+        ConsoleHandler consoleHandler = new ConsoleHandler();
+        consoleHandler.setFormatter(new Formatter() {
+            @Override
+            public String format(LogRecord record) {
+                return record.getMessage() + "\n";
+            }
+        });
+        logger.addHandler(consoleHandler);
+        logger.setLevel(Level.INFO);
     }
 
     public static class ModeConverter implements ITypeConverter<Mode> {
